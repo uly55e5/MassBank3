@@ -13,20 +13,45 @@ import (
 	"time"
 )
 
-func (p *DefaultProperty) Parse(string) error {
-	return errors.New("not implemented")
+var lastTag string
+
+type tagProperties struct {
+	Type  reflect.Type
+	Name  string
+	Index []int
 }
 
-func (p *StringProperty) Parse(s string) error {
-	p.String = s
+var tagMap = map[string]tagProperties{}
+
+type tagValue struct {
+	tag    string
+	values []string
+}
+
+type TagValues []tagValue
+
+type StringProperty interface {
+	~string
+}
+
+func parse(p *interface{}, s string) error {
+	switch (*p).(type) {
+	case string:
+		*p = s
+	case SubtagProperty:
+
+	default:
+		return errors.New("not implemented")
+	}
 	return nil
+
 }
 
 func (p *SubtagProperty) Parse(s string) error {
 	ss := strings.SplitN(s, " ", 2)
 	if len(ss) > 1 {
 		p.Subtag = ss[0]
-		p.String = ss[1]
+		p.Value = ss[1]
 	} else {
 		return errors.New("Subtag error: " + s)
 	}
@@ -108,7 +133,7 @@ func (names *RecordAuthorNames) Parse(s string) error {
 			marc = ss1[2]
 		}
 		if len(ss1) > 1 {
-			names.Value = append(names.Value, RecordAuthorName{ss1[1], marc})
+			*names = append(*names, RecordAuthorName{ss1[1], marc})
 		}
 	}
 	return nil
@@ -118,14 +143,15 @@ func (cc *ChCompoundClasses) Parse(s string) error {
 	ss := strings.Split(s, ";")
 	for _, s1 := range ss {
 		var c = ChCompoundClass(strings.TrimSpace(s1))
-		cc.Value = append(cc.Value, c)
+		*cc = append(*cc, c)
 	}
 	return nil
 }
 
 func (mass *ChMass) Parse(s string) error {
 	var err error
-	mass.Value, err = strconv.ParseFloat(s, 64)
+	m, err = strconv.ParseFloat(s, 64)
+	*mass = ChMass(m)
 	if err != nil {
 		return err
 	}
@@ -161,9 +187,9 @@ func (p *PkAnnotation) Parse(s string) error {
 func (p *SpLineage) Parse(s string) error {
 	ss := strings.Split(s, ";")
 	for _, es := range ss {
-		element := SpLineageElement{}
-		element.String = strings.TrimSpace(es)
-		p.Value = append(p.Value, element)
+		var element = SpLineageElement("")
+		element = SpLineageElement(strings.TrimSpace(es))
+		*p = append(*p, element)
 	}
 	return nil
 }
@@ -172,9 +198,9 @@ func (p *RecordComment) Parse(s string) error {
 	ss := strings.SplitN(s, " ", 2)
 	if len(ss) > 1 && contains(commentSubtagList, strings.TrimSpace(ss[0])) {
 		p.Subtag = ss[0]
-		p.String = ss[1]
+		p.Value = ss[1]
 	} else if len(s) > 0 {
-		p.String = s
+		p.Value = s
 	} else {
 		return errors.New("Subtag error: " + s)
 	}
@@ -195,7 +221,7 @@ func ParseFile(fileName string) (mb *Massbank, err error) {
 }
 
 func ScanMbFile(mb2Reader io.Reader, fileName string) (*Massbank, error) {
-	if len(TagMap) == 0 {
+	if len(tagMap) == 0 {
 		buildTags()
 	}
 	var mb = Massbank{}
@@ -238,6 +264,36 @@ func (mb *Massbank) ReadLine(line string, lineNum int) {
 			println("The line is not a valid massbank tag line: \n", line)
 		}
 	}
+}
+
+// Build an array with type information and tag strings for parsing
+func buildTags() {
+	var mb = Massbank{}
+	mb.addTagField(mb, []int{})
+}
+
+func (mb *Massbank) addTagField(i interface{}, index []int) {
+	valType := reflect.TypeOf(i)
+	for _, field := range reflect.VisibleFields(valType) {
+		if field.Type.Kind() != reflect.Struct {
+			mb.addFieldToMap(field, index)
+		} else {
+			mb.addTagField(reflect.ValueOf(i).FieldByIndex(field.Index).Interface(), append(index, field.Index...))
+		}
+	}
+}
+
+func (mb *Massbank) addFieldToMap(field reflect.StructField, index []int) {
+	var props = tagProperties{}
+	props.Name = field.Name
+	props.Type = field.Type
+	props.Index = append(index, field.Index...)
+	tag := field.Tag.Get("mb2")
+	subtag := field.Tag.Get("mb2st")
+	if subtag != "" {
+		subtag = ":" + subtag
+	}
+	tagMap[tag] = props
 }
 
 func (mb *Massbank) parsePeakValue(line string, lineNum int) error {
@@ -288,7 +344,7 @@ func (mb *Massbank) parseAnnotationValue(line string, lineNum int) {
 }
 
 func (mb *Massbank) addValue(tagname string, value string, lineNum int) error {
-	tagInfo := TagMap[tagname]
+	tagInfo := tagMap[tagname]
 	index := tagInfo.Index
 	mb2 := reflect.ValueOf(mb)
 	mb3 := reflect.Indirect(mb2)
@@ -299,8 +355,7 @@ func (mb *Massbank) addValue(tagname string, value string, lineNum int) error {
 	}
 	newPro := reflect.New(prop2)
 	newInterf := newPro.Interface()
-	propInt := newInterf.(Property)
-	err := propInt.Parse(value)
+	err := parse(newInterf, value)
 	if err != nil {
 		log.Println(err.Error(), "Tag: ", tagname, "File: ", mb.Metadata.FileName, "Line: ", lineNum)
 	}

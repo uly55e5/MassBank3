@@ -1,14 +1,11 @@
 package massbank
 
 import (
-	"reflect"
 	"time"
 )
 
 const dateFormat = "2006.01.02"
 const deprecatedDateFormat = "2006-01-02"
-
-var lastTag string
 
 type MbMetaData struct {
 	Commit    string
@@ -16,36 +13,15 @@ type MbMetaData struct {
 	Timestamp string
 }
 
-type Property interface {
-	Parse(string) error
-}
-
-type DefaultProperty struct {
-}
-
-type StringProperty struct {
-	String string
-	DefaultProperty
-}
-
 type SubtagProperty struct {
-	StringProperty
+	Value  string
 	Subtag string
 }
 
 type DatabaseProperty struct {
-	DefaultProperty
 	Database   string
 	Identifier string
 }
-
-type tagProperties struct {
-	Type  reflect.Type
-	Name  string
-	Index []int
-}
-
-var TagMap = map[string]tagProperties{}
 
 type MbReference string
 
@@ -99,228 +75,108 @@ type Massbank struct {
 	}
 }
 
-type RecordAccession struct {
-	StringProperty
-}
+type RecordAccession string
 
 type RecordDeprecated struct {
 	Date   time.Time
 	Reason string
-	DefaultProperty
 }
 
-type RecordTitle struct {
-	StringProperty
-}
+type RecordTitle string
 
 type RecordDate struct {
-	DefaultProperty
 	Updated  time.Time
 	Created  time.Time
 	Modified time.Time
 }
 
-type RecordAuthorNames struct {
-	DefaultProperty
-	Value []RecordAuthorName
-}
+type RecordAuthorNames []RecordAuthorName
 
 type RecordAuthorName struct {
 	Name        string
 	MarcRelator string
 }
 
-type RecordLicense struct {
-	StringProperty
-}
+type RecordLicense string
 
-type RecordCopyright struct {
-	StringProperty
-}
+type RecordCopyright string
 
-type RecordPublication struct {
-	StringProperty
-}
+type RecordPublication string
 
-type RecordProject struct {
-	StringProperty
-}
+type RecordProject string
 
-type RecordComment struct {
-	SubtagProperty
-}
+type RecordComment SubtagProperty
 
 type RecordSubtag string
 
 type RecordMbTag string
 
-type ChName struct {
-	StringProperty
-}
+type ChName string
 
-type ChCompoundClasses struct {
-	DefaultProperty
-	Value []ChCompoundClass
-}
+type ChCompoundClasses []ChCompoundClass
 
 type ChCompoundClass string
 
-type ChFormula struct {
-	StringProperty
-}
+type ChFormula string
 
-type ChMass struct {
-	DefaultProperty
-	Value float64
-}
+type ChMass float64
 
-type ChSmiles struct {
-	StringProperty
-}
+type ChSmiles string
 
-type ChInchi struct {
-	StringProperty
-}
+type ChInchi string
 
-type ChLink struct {
-	DatabaseProperty
-}
+type ChLink string
 
-type ExtDatabase struct {
-	StringProperty
-}
+type ExtDatabase string
 
-type CdkDepict struct {
-	StringProperty
-}
+type CdkDepict string
 
-type SpName struct {
-	StringProperty
-}
+type SpName string
 
-type SpLineage struct {
-	DefaultProperty
-	Value []SpLineageElement
-}
+type SpLineage []SpLineageElement
 
-type SpLineageElement struct {
-	StringProperty
-}
+type SpLineageElement string
 
-type SpLink struct {
-	DatabaseProperty
-}
+type SpLink DatabaseProperty
 
-type SampleInformation struct {
-	StringProperty
-}
+type SampleInformation string
 
-type AcInstrument struct {
-	StringProperty
-}
+type AcInstrument string
 
 type Separation string
 type Ionization string
 type Analyzer string
-type AcInstrumentType struct {
-	StringProperty
-}
+
+type AcInstrumentType string
+
 type MsType string
-
-const (
-	MS  MsType = "MS"
-	MS2 MsType = "MS2"
-	MS3 MsType = "MS3"
-	MS4 MsType = "MS4"
-)
-
-func (ms MsType) String() string {
-	return string(ms)
-}
 
 type IonMode string
 
-const (
-	ANY      IonMode = ""
-	POSITIVE IonMode = "POSITIVE"
-	NEGATIVE IonMode = "NEGATIVE"
-)
+type AcMassSpectrometry SubtagProperty
 
-type AcMassSpectrometry struct {
-	SubtagProperty
-}
-
-type AcChromatography struct {
-	SubtagProperty
-}
+type AcChromatography SubtagProperty
 
 type AcGeneral struct {
 	SubtagProperty
 }
 
 type PkPeak struct {
-	DefaultProperty
 	Header    []string
 	Mz        []float64
 	Intensity []float64
 	Rel       []uint
 }
 
-type MsFocusedIon struct {
-	SubtagProperty
-}
-type MsDataProcessing struct {
-	SubtagProperty
-}
+type MsFocusedIon SubtagProperty
 
-type PkSplash struct {
-	StringProperty
-}
+type MsDataProcessing SubtagProperty
+
+type PkSplash string
 
 type PkAnnotation struct {
-	DefaultProperty
 	Header []string
 	Values map[string][]interface{}
 }
 
-type PkNumPeak struct {
-	DefaultProperty
-	Value uint
-}
-
-type TagValue struct {
-	tag    string
-	values []string
-}
-
-type TagValues []TagValue
-
-// Build an array with type information and tag strings for parsing
-func buildTags() {
-	var mb = Massbank{}
-	mb.addTagField(mb, []int{})
-}
-
-func (mb *Massbank) addTagField(i interface{}, index []int) {
-	valType := reflect.TypeOf(i)
-	for _, field := range reflect.VisibleFields(valType) {
-		if field.Type.Kind() != reflect.Struct {
-			mb.addFieldToMap(field, index)
-		} else {
-			mb.addTagField(reflect.ValueOf(i).FieldByIndex(field.Index).Interface(), append(index, field.Index...))
-		}
-	}
-}
-
-func (mb *Massbank) addFieldToMap(field reflect.StructField, index []int) {
-	var props = tagProperties{}
-	props.Name = field.Name
-	props.Type = field.Type
-	props.Index = append(index, field.Index...)
-	tag := field.Tag.Get("mb2")
-	subtag := field.Tag.Get("mb2st")
-	if subtag != "" {
-		subtag = ":" + subtag
-	}
-	TagMap[tag] = props
-}
+type PkNumPeak uint

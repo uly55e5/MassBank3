@@ -11,6 +11,7 @@ require (
 	github.com/lib/pq v1.10.7
 	github.com/nullism/bqb v1.3.1
 	go.mongodb.org/mongo-driver v1.11.6
+	golang.org/x/exp v0.0.0-20230510235704-dd950f8aeaea
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22
 )
 
