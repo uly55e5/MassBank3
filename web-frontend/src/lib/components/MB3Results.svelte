@@ -1,7 +1,7 @@
 <script lang="ts">
 import Pagination from "$component/Pagination.svelte";
 import ShortRecordSummary from "$component/ShortRecordSummary.svelte";
-import {Filters} from "$lib/common/FilterFunctions.js";
+import type {Filters} from "$lib/common/FilterFunctions.js";
 
 let curPage=1
 let pages=1
@@ -28,6 +28,7 @@ async function getResults(page) {
         console.log(jsonData)
         throw new Error("Could not get results")
     }
+    $: filters && getResults(curPage)
 }
 
 export let baseURL

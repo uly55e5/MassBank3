@@ -16,6 +16,7 @@
     }
 
     $: base = data.baseurl
+    $: (filters.contributors || filters.ionMode || filters.msType || filters.instrumentType) && (filters = filters)
 </script>
 
 <div class="pure-g">
@@ -26,7 +27,7 @@
     </div>
     <div class="pure-u-3-5">
         <h2>Results</h2>
-            <MB3Results bind:baseURL={base} bind:filters></MB3Results>
+            <MB3Results bind:baseURL={base} filters={filters}></MB3Results>
     </div>
     <div class="pure-u-1-5">
         <div class="card">

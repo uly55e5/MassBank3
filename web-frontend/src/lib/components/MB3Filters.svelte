@@ -1,6 +1,7 @@
 <script lang="ts">
     import FilterButton from "$component/FilterBox.svelte";
-    import {Filters, getFilterValues} from "$lib/common/FilterFunctions.js"
+    import {getFilterValues} from "$lib/common/FilterFunctions.js"
+    import type {Filters} from "$lib/common/FilterFunctions.js";
 
     export let filters: Filters;
     export let baseUrl: string;
