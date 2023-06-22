@@ -31,8 +31,6 @@ services:
 
   mb3server:
     restart: always
-    ports:
-      - "${MB3_API_PORT}:${MB3_SERVER_PORT}"
     environment:
       - DB_TYPE
       - DB_PORT

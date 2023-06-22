@@ -10,7 +10,6 @@
 {#await getFilterValues(baseUrl)}
     <div class="info">loading filters...</div>
 {:then filterValues}
-    <div class>
         <h2>Filters</h2>
         <h3>Instrument Type</h3>
         <FilterButton bind:result={filters.instrumentType} group="itype" values={filterValues.instrument_type}></FilterButton>
@@ -20,7 +19,15 @@
         <FilterButton bind:result={filters.ionMode} group="imode" values={filterValues.ion_mode}></FilterButton>
         <h3>Contributor</h3>
         <FilterButton bind:result={filters.contributors} group="cont" values={filterValues.contributor}></FilterButton>
-    </div>
 {:catch error}
     <div class="error">Error during Filter loading</div>
 {/await}
+
+<style>
+    h2 {
+        margin-block: 0.2em;
+    }
+    h3 {
+        margin-block: 0.2em;
+    }
+</style>

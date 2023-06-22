@@ -8,7 +8,7 @@
 <div class="filteroption">
 <label>
     <input type=checkbox bind:group={result} name={group} value={v.value}>
-    {v.value} ({v.count}}
+    {v.value} ({v.count})
 </label>
 </div>
 {/each}

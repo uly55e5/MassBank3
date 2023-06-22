@@ -17,6 +17,8 @@ services:
       file: docker-compose-common.yaml
       service: mb3server
     build: ../
+    ports:
+      - "${MB3_API_PORT}:${MB3_SERVER_PORT}"
     depends_on:
       - mongodb
       - postgres

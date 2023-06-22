@@ -3,6 +3,7 @@
     import MB3CharInfoCharts from "$component/MB3CharInfoCharts.svelte";
     import MB3Results from "$component/MB3Results.svelte";
     import type {Filters} from "$lib/common/FilterFunctions";
+    import Card from "$component/Card.svelte";
 
     /** @type {import('./$typesunknownPageData} */
     export let data: any;
@@ -16,23 +17,22 @@
     }
 
     $: base = data.baseurl
-    $: (filters.contributors || filters.ionMode || filters.msType || filters.instrumentType) && (filters = filters)
 </script>
 
 <div class="pure-g">
     <div class="pure-u-1-5">
-        <div class="card">
+        <Card>
             <MB3Filters bind:filters bind:baseUrl={base}></MB3Filters>
-        </div>
+        </Card>
     </div>
     <div class="pure-u-3-5">
         <h2>Results</h2>
             <MB3Results bind:baseURL={base} filters={filters}></MB3Results>
     </div>
     <div class="pure-u-1-5">
-        <div class="card">
+        <Card>
             <MB3CharInfoCharts bind:baseURL={base}></MB3CharInfoCharts>
-        </div>
+        </Card>
     </div>
 </div>
 
@@ -48,15 +48,4 @@
         padding: 0.3em;
         margin: 0;
     }
-
-    .card {
-        border: solid #a9a9a9;
-        margin: 0.5em;
-    }
-
-    .record-name {
-        font-weight: bold;
-        font-size: 1.5em;
-    }
-
 </style>

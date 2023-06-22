@@ -1,7 +1,9 @@
 <script lang="ts">
+    import Card from "$component/Card.svelte";
     export let record: any;
 </script>
-<div class="card short-record">
+
+<Card>
                 <div class="record-name">{record.name}</div>
                 <div>{record.formula}</div>
     <svg width="30%">
@@ -14,7 +16,7 @@
                         {#each record.spectra as spectrum}
                             <a href="/record/{spectrum.id}"><div>{spectrum.id} {spectrum.title}</div></a>
                     {/each}
-                </div>
+                </Card>
 
 <style>
     .card {

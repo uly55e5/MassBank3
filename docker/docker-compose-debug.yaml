@@ -7,14 +7,14 @@ services:
       file: docker-compose-common.yaml
       service: mongodb
     ports:
-      - "27017:27017"
+      - "127.0.0.1:27017:27017"
 
   postgres:
     extends:
       file: docker-compose-common.yaml
       service: postgres
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
 
   mb3server:
     extends:
@@ -24,7 +24,8 @@ services:
       context: ..
       dockerfile: Dockerfile-debug
     ports:
-      - "40000:40000"
+      - "127.0.0.1:40000:40000"
+      - "127.0.0.1:${MB3_API_PORT}:${MB3_SERVER_PORT}"
     cap_add:
       - SYS_PTRACE
     security_opt:
