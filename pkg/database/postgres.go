@@ -27,8 +27,21 @@ type PostgresSQLDB struct {
 }
 
 func (p *PostgresSQLDB) GetMetaData() (*MB3MetaData, error) {
-	//TODO implement me
-	panic("implement me")
+
+	var result MB3MetaData
+	if err := p.database.QueryRow("SELECT version,to_char(timestamp AT TIME ZONE 'MEZ','YYYY-MM-DD\"T\"HH24:MI:SSTZH:TZM'),commit FROM metadata LIMIT 1").Scan(&result.StoredMetadata.Version, &result.StoredMetadata.TimeStamp, &result.StoredMetadata.GitCommit); err != nil {
+		return nil, err
+	}
+	q := `WITH mbdeprecated AS (SELECT * FROM massbank WHERE document->>'deprecated' is null),
+ikt AS (SELECT link->>'identifier' id FROM (SELECT jsonb_array_elements(document->'compound'->'link') link FROM mbdeprecated WHERE  jsonb_typeof(document->'compound'->'link') = 'array') ms WHERE link->>'database' = 'INCHIKEY')
+SELECT
+    (SELECT COUNT(id) FROM mbdeprecated) as spectraCount,
+    (SELECT COUNT (DISTINCT id) FROM ikt ) as compoundCount,
+    (SELECT COUNT (DISTINCT substring(id FROM 1 FOR 14)) FROM ikt ) as isomerCount`
+	if err := p.database.QueryRow(q).Scan(&result.SpectraCount, &result.CompoundCount, &result.IsomerCount); err != nil {
+		return nil, err
+	}
+	return &result, nil
 }
 
 // NewPostgresSQLDb creates a postgres database handle implementing [MB3Database] from the configuration.
@@ -528,7 +541,7 @@ func (p *PostgresSQLDB) init() error {
 		CREATE TABLE IF NOT EXISTS metadata
 			(id SERIAL,
 			commit char(40),
-			timestamp timestamp NOT NULL,
+			timestamp timestamptz NOT NULL,
 			version varchar(10) NOT NULL,
 		    PRIMARY KEY (id),
 		    UNIQUE (commit,timestamp,version))

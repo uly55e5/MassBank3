@@ -988,3 +988,50 @@ func TestMB3Database_UpdateRecords(t *testing.T) {
 		}
 	}
 }
+
+func TestMB3Database_GetMetadata(t *testing.T) {
+	DBs, err := initDBs(All)
+	if err != nil {
+		t.Fatal("Could not init Databases: ", err.Error())
+	}
+	for _, db := range DBs {
+
+		type testData struct {
+			db      testDB
+			name    string
+			want    MB3MetaData
+			wantErr bool
+		}
+		var tests = []testData{
+			{
+				db,
+				db.name + "Get valid metadata",
+				MB3MetaData{
+					StoredMetadata: MB3StoredMetaData{
+						Version:   "2022.12",
+						TimeStamp: "2023-02-02T13:35:54+01:00",
+						GitCommit: "1e112e6777e453f54d8e3b3f6cac0f193d53fa38",
+					},
+					SpectraCount:  12,
+					CompoundCount: 11,
+					IsomerCount:   11,
+				},
+				false,
+			},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				got, err := tt.db.db.GetMetaData()
+				if (err != nil) != tt.wantErr {
+					t.Errorf("%s: GetMetaData() error = %v, wantErr %v", tt.db.name, err, tt.wantErr)
+					return
+				}
+				bg, errg := json.Marshal(got)
+				bw, errw := json.Marshal(tt.want)
+				if string(bg) != string(bw) || errg != nil || errw != nil {
+					t.Errorf("\nwant: %v \ngot : %v\n", string(bw), string(bg))
+				}
+			})
+		}
+	}
+}
