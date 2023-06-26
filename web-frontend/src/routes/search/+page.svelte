@@ -17,8 +17,11 @@ let filters: Filters  = {
     contributors: [],
     msType: [],
     instrumentType: [],
-    ionMode : []
+    ionMode : [],
+    fullText: null
 }
+
+let activeFilters = filters
 
 $: base = data.baseurl
 
@@ -31,12 +34,32 @@ $: base = data.baseurl
         </Card>
     </div>
     <div class="pure-u-3-5">
-        <AccordionItem headline="Fulltext search"><FullTextSearch/></AccordionItem>
+        <AccordionItem headline="Fulltext search" bind:value={filters.fullText}><FullTextSearch/></AccordionItem>
         <AccordionItem headline="Basic search"><MB3BasicSearch/></AccordionItem>
         <AccordionItem headline="Peak search"><MB3PeakSearch></MB3PeakSearch></AccordionItem>
         <AccordionItem headline="Peak difference search"><MB3PeakSearch/></AccordionItem>
         <AccordionItem headline="Spectrum similarity search"><MB3SimilaritySearch></MB3SimilaritySearch></AccordionItem>
 
         <MB3Results bind:baseURL={base} filters={filters}></MB3Results>
+    </div>
+    <div class="pure-u-1-5">
+        <Card>
+        <h1>Active filters</h1>
+            {#each Object.entries(filters) as [k,v] }
+                {#if Array.isArray(v) }
+                    {#if v.length > 0}
+                    {k}:
+                    {#each v as vv}
+                        {vv}&nbsp;
+                    {/each}
+                    {/if}
+                {:else }
+                    {#if v !== null}
+                        {k}.: {v} &nbsp;
+                    {/if}
+                {/if}
+
+            {/each}
+        </Card>
     </div>
 </div>

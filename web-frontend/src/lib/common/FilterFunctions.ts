@@ -3,6 +3,7 @@ export interface Filters {
     msType: string[]
     ionMode: string[]
     contributors: string[]
+    fullText: string | null
 }
 
 export async function getFilterValues(baseURL: string, all = true, filters: Filters) {
