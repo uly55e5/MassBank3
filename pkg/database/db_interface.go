@@ -5,6 +5,7 @@ import (
 	"github.com/MassBank/MassBank3/pkg/massbank"
 	"log"
 	"math"
+	"time"
 )
 
 // Filters is the abstract description of filters used to find MassBank records
@@ -107,7 +108,7 @@ type MB3Values struct {
 
 type MB3StoredMetaData struct {
 	Version   string
-	TimeStamp string
+	TimeStamp time.Time
 	GitCommit string
 }
 

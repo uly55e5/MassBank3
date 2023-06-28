@@ -29,7 +29,7 @@ type PostgresSQLDB struct {
 func (p *PostgresSQLDB) GetMetaData() (*MB3MetaData, error) {
 
 	var result MB3MetaData
-	if err := p.database.QueryRow("SELECT version,to_char(timestamp AT TIME ZONE 'MEZ','YYYY-MM-DD\"T\"HH24:MI:SSTZH:TZM'),commit FROM metadata LIMIT 1").Scan(&result.StoredMetadata.Version, &result.StoredMetadata.TimeStamp, &result.StoredMetadata.GitCommit); err != nil {
+	if err := p.database.QueryRow("SELECT version,timestamp at time zone 'UTC',commit FROM metadata LIMIT 1").Scan(&result.StoredMetadata.Version, &result.StoredMetadata.TimeStamp, &result.StoredMetadata.GitCommit); err != nil {
 		return nil, err
 	}
 	q := `WITH mbdeprecated AS (SELECT * FROM massbank WHERE document->>'deprecated' is null),

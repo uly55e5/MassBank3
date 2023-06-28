@@ -60,9 +60,10 @@ func GetBrowseOptions(instrumentTyoe []string, msType []string, ionMode string, 
 	var result = BrowseOptions{}
 	metadata, err := db.GetMetaData()
 	println(metadata)
+	time, err := metadata.StoredMetadata.TimeStamp.MarshalText()
 	result.Metadata = Metadata{
 		Version:       metadata.StoredMetadata.Version,
-		Timestamp:     metadata.StoredMetadata.TimeStamp,
+		Timestamp:     string(time),
 		GitCommit:     metadata.StoredMetadata.GitCommit,
 		SpectraCount:  int32(metadata.SpectraCount),
 		CompoundCount: int32(metadata.CompoundCount),
@@ -147,13 +148,14 @@ func GetRecords(limit int32, page int32, contributor []string, instrumentType []
 	for _, value := range searchResult.Data {
 		smiles := (value.Smiles)
 		svg, err := getSvgFromSmiles(&smiles)
-		re := regexp.MustCompile("<\\?xml[^>]*>\\n<!DOCTYPE[^>]*>\\n")
-		svgS := string(re.ReplaceAll([]byte(*svg), []byte("")))
-		re = regexp.MustCompile("\\n")
-		svgS = string(re.ReplaceAll([]byte(svgS), []byte(" ")))
-		if err != nil {
+		svgS := ""
+		if err == nil {
+			re := regexp.MustCompile("<\\?xml[^>]*>\\n<!DOCTYPE[^>]*>\\n")
+			svgS = string(re.ReplaceAll([]byte(*svg), []byte("")))
+			re = regexp.MustCompile("\\n")
+			svgS = string(re.ReplaceAll([]byte(svgS), []byte(" ")))
+		} else {
 			log.Println(err)
-			*svg = ""
 		}
 		var val = SearchResultDataInner{
 			Data:    map[string]interface{}{},

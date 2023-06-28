@@ -7,6 +7,7 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestMain(m *testing.M) {
@@ -1002,6 +1003,10 @@ func TestMB3Database_GetMetadata(t *testing.T) {
 			want    MB3MetaData
 			wantErr bool
 		}
+		ts, err := time.Parse(time.RFC3339, "2023-02-02T12:35:54Z")
+		if err != nil {
+			println(err.Error())
+		}
 		var tests = []testData{
 			{
 				db,
@@ -1009,7 +1014,7 @@ func TestMB3Database_GetMetadata(t *testing.T) {
 				MB3MetaData{
 					StoredMetadata: MB3StoredMetaData{
 						Version:   "2022.12",
-						TimeStamp: "2023-02-02T13:35:54+01:00",
+						TimeStamp: ts,
 						GitCommit: "1e112e6777e453f54d8e3b3f6cac0f193d53fa38",
 					},
 					SpectraCount:  12,

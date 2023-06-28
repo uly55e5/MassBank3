@@ -114,10 +114,11 @@ func (db *Mb3MongoDB) GetMetaData() (*MB3MetaData, error) {
 	md := db.database.Collection(mbMetaCollection).FindOne(context.Background(), bson.D{})
 	var mdMap bson.M
 	md.Decode(&mdMap)
+	time, err := time.Parse(time.RFC3339, mdMap["timestamp"].(string))
 	result := MB3MetaData{
 		StoredMetadata: MB3StoredMetaData{
 			Version:   mdMap["version"].(string),
-			TimeStamp: mdMap["timestamp"].(string),
+			TimeStamp: time.UTC(),
 			GitCommit: mdMap["commit"].(string),
 		},
 		SpectraCount:  int(dataMap[0]["SpectraCount"].(int32)),
