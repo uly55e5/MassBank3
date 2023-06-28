@@ -42,12 +42,26 @@ export let baseURL
 {#if error === null && results === null}
     <div class="info">Loading results...</div>
 {:else if (error === null)}
-
+    {#if Array.isArray(results.data)}
     <Pagination bind:currentPage={curPage} pages={pages}>(Found {results.metadata.result_count} compounds with {results.metadata.spectra_count} spectra)
+
         {#each results.data as record}
             <ShortRecordSummary record="{record}"></ShortRecordSummary>
         {/each}
+
     </Pagination>
+        {:else}
+        <div class="result">No results found</div>
+    {/if}
+
 {:else}
     <div class="error">Error while loading results</div>
 {/if}
+
+<style>
+    .result {
+        padding: 1em;
+        font-weight: bold;
+        font-size: 1.2em;
+    }
+</style>

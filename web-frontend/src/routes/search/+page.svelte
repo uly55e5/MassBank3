@@ -22,8 +22,9 @@ let filters: Filters  = {
 }
 
 let activeFilters = filters
-
+let fullText
 $: base = data.baseurl
+$: filters.fullText = fullText
 
 </script>
 
@@ -34,7 +35,7 @@ $: base = data.baseurl
         </Card>
     </div>
     <div class="pure-u-3-5">
-        <AccordionItem headline="Fulltext search" bind:value={filters.fullText}><FullTextSearch/></AccordionItem>
+        <AccordionItem headline="Fulltext search" ><FullTextSearch bind:value={filters.fullText}/></AccordionItem>
         <AccordionItem headline="Basic search"><MB3BasicSearch/></AccordionItem>
         <AccordionItem headline="Peak search"><MB3PeakSearch></MB3PeakSearch></AccordionItem>
         <AccordionItem headline="Peak difference search"><MB3PeakSearch/></AccordionItem>
@@ -48,18 +49,36 @@ $: base = data.baseurl
             {#each Object.entries(filters) as [k,v] }
                 {#if Array.isArray(v) }
                     {#if v.length > 0}
-                    {k}:
-                    {#each v as vv}
-                        {vv}&nbsp;
-                    {/each}
+                        <div><div class="key">{k.replace(/([A-Z]+)/g, " $1").replace(/([A-Z][a-z])/g, " $1")}</div>:
+                        {#each v as vv}
+                            <div class="cloud">{vv}</div>&nbsp;
+                        {/each}
+                        </div>
                     {/if}
-                {:else }
-                    {#if v !== null}
-                        {k}.: {v} &nbsp;
+                {:else}
+                    {#if v !== null && typeof v !== 'undefined' && v !== ""}
+                        <div><div class="key">{k.replace(/([A-Z]+)/g, " $1").replace(/([A-Z][a-z])/g, " $1")}</div>: <div class="cloud">{v}</div></div>
                     {/if}
                 {/if}
-
             {/each}
         </Card>
     </div>
 </div>
+
+<style>
+    .cloud {
+        border: solid #aaaaaa;
+        border-radius: 1em;
+        display: inline-block;
+        padding: 0.2em 0.5em;
+        background-color: #dddddd;
+    }
+
+    .key {
+        font-weight: bold;
+        display: inline-block;
+    }
+    .key::first-letter {
+        text-transform: capitalize;
+    }
+</style>
