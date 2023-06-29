@@ -41,7 +41,8 @@ require (
 	golang.org/x/crypto v0.3.0 // indirect
 	golang.org/x/net v0.2.0 // indirect
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4 // indirect
-	golang.org/x/sys v0.3.0 // indirect
-	golang.org/x/text v0.4.0 // indirect
+	golang.org/x/sys v0.5.0 // indirect
+	golang.org/x/text v0.8.0 // indirect
+	gonum.org/v1/gonum v0.13.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
