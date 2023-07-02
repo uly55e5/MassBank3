@@ -9,9 +9,9 @@ require (
 	github.com/go-chi/cors v1.2.0
 	github.com/go-git/go-git/v5 v5.5.2
 	github.com/lib/pq v1.10.7
-	github.com/mpvl/unique v0.0.0-20150818121801-cbe035fff7de
 	github.com/nullism/bqb v1.3.1
 	go.mongodb.org/mongo-driver v1.11.6
+	gonum.org/v1/gonum v0.13.0
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22
 )
 
@@ -43,6 +43,5 @@ require (
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4 // indirect
 	golang.org/x/sys v0.5.0 // indirect
 	golang.org/x/text v0.8.0 // indirect
-	gonum.org/v1/gonum v0.13.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )

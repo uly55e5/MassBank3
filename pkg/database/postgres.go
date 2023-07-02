@@ -26,6 +26,11 @@ type PostgresSQLDB struct {
 	database   *sql.DB
 }
 
+func (p *PostgresSQLDB) GetSpectra(filters Filters) (map[string]massbank.MsSpectrum, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (p *PostgresSQLDB) GetMetaData() (*MB3MetaData, error) {
 
 	var result MB3MetaData

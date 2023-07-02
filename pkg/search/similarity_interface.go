@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+type SearchId string
+
 type SearchResult struct {
 	Scores     map[string]any
 	Parameters map[string]any
@@ -24,8 +26,9 @@ const (
 )
 
 type SimilaritySearch interface {
-	SetParameters(map[string]any) error
-	Search(filters database.Filters) (string, error)
-	GetStatus(searchId string) (SearchStatus, string)
-	GetResult(searchId string) (SearchResult, error)
+	SetParameters(par map[string]any) error
+	SetDatabase(db database.MB3Database)
+	Search(spectrum massbank.MsSpectrum, filters database.Filters) (SearchId, error)
+	GetStatus(searchId SearchId) (SearchStatus, string)
+	GetResult(searchId SearchId) (SearchResult, error)
 }

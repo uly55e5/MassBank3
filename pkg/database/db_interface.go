@@ -216,6 +216,8 @@ type MB3Database interface {
 	UpdateRecords(records []*massbank.MassBank2, metaDataId string, upsert bool) (uint64, uint64, error)
 
 	GetSmiles(accession *string) (*string, error)
+
+	GetSpectra(filters Filters) (map[string]massbank.MsSpectrum, error)
 }
 
 var db MB3Database

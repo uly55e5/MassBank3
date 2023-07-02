@@ -27,6 +27,11 @@ type Mb3MongoDB struct {
 	dirty    bool            // if true, the database connection was changed and the database will reconnect.
 }
 
+func (db *Mb3MongoDB) GetSpectra(filters Filters) (map[string]massbank.MsSpectrum, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 var metadata *MB3MetaData
 
 func (db *Mb3MongoDB) GetMetaData() (*MB3MetaData, error) {
