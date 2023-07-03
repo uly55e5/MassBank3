@@ -3,9 +3,9 @@ package config
 import (
 	"errors"
 	"flag"
+	"github.com/MassBank/MassBank3/pkg/common"
 	"github.com/MassBank/MassBank3/pkg/database"
 	"log"
-	"os"
 	"strconv"
 )
 
@@ -48,10 +48,10 @@ func GetToolConfig() ToolConfig {
 	}
 	toolConfig = &ToolConfig{DBConfig: getDBConfig()}
 	var err error
-	toolConfig.GitRepo = getEnv("MB_GIT_REPO", mbGitRepoDefault)
-	toolConfig.GitBranch = getEnv("MB_GIT_BRANCH", mbGitBranchDefault)
-	var drop = getEnv("MB_DROP_ALL", mbDropAllDefault)
-	toolConfig.DataDir = getEnv("MB_DATA_DIRECTORY", mbDataDirectoryDefault)
+	toolConfig.GitRepo = common.GetEnv("MB_GIT_REPO", mbGitRepoDefault)
+	toolConfig.GitBranch = common.GetEnv("MB_GIT_BRANCH", mbGitBranchDefault)
+	var drop = common.GetEnv("MB_DROP_ALL", mbDropAllDefault)
+	toolConfig.DataDir = common.GetEnv("MB_DATA_DIRECTORY", mbDataDirectoryDefault)
 	toolConfig.Drop, err = strconv.ParseBool(drop)
 	if err != nil {
 		log.Println(err.Error())
@@ -73,14 +73,14 @@ func GetServerConfig() *ServerConfig {
 	}
 	serverConfig = &ServerConfig{DBConfig: getDBConfig()}
 	var err error
-	var serverPortEnv = getEnv("MB3_SERVER_PORT", serverPortDefault)
+	var serverPortEnv = common.GetEnv("MB3_SERVER_PORT", serverPortDefault)
 	var serverPort uint64
 	serverPort, err = strconv.ParseUint(serverPortEnv, 10, 16)
 	if err != nil {
 		panic(errors.New("Could not read port variable: DB_PORT=" + serverPortEnv))
 	}
 	serverConfig.ServerPort = uint(serverPort)
-	serverConfig.CdkDepictUrl = getEnv("CDKDEPICT_URL", cdkdepictUrlDefault)
+	serverConfig.CdkDepictUrl = common.GetEnv("CDKDEPICT_URL", cdkdepictUrlDefault)
 	flag.StringVar(&serverConfig.CdkDepictUrl, "cdkdepict_url", serverConfig.CdkDepictUrl, "Base URL of the CDK Depict api server. Overwrites environment variable CDKDEPICT_URL")
 	flag.UintVar(&serverConfig.ServerPort, "server_port", serverConfig.ServerPort, "Listen on this port. Overwrites environment variable SERVER_PORT")
 	flag.Parse()
@@ -90,13 +90,13 @@ func GetServerConfig() *ServerConfig {
 func getDBConfig() database.DBConfig {
 	var c = database.DBConfig{}
 	var err error
-	c.DbUser = getEnv("DB_USER", dbUserDefault)
-	c.DbPwd = getEnv("DB_PASSWORD", dbPasswordDefault)
-	c.DbHost = getEnv("DB_HOST", dbHostDefault)
-	c.DbName = getEnv("DB_NAME", dbNameDefault)
-	c.DbConnStr = getEnv("DB_CONN_STRING", dbConnStringDefault)
-	var databaseType = getEnv("DB_TYPE", dbDefault)
-	var dbPortEnv = getEnv("DB_PORT", dbPortDefault)
+	c.DbUser = common.GetEnv("DB_USER", dbUserDefault)
+	c.DbPwd = common.GetEnv("DB_PASSWORD", dbPasswordDefault)
+	c.DbHost = common.GetEnv("DB_HOST", dbHostDefault)
+	c.DbName = common.GetEnv("DB_NAME", dbNameDefault)
+	c.DbConnStr = common.GetEnv("DB_CONN_STRING", dbConnStringDefault)
+	var databaseType = common.GetEnv("DB_TYPE", dbDefault)
+	var dbPortEnv = common.GetEnv("DB_PORT", dbPortDefault)
 	var dbPort uint64
 	dbPort, err = strconv.ParseUint(dbPortEnv, 10, 16)
 	if err != nil {
@@ -126,11 +126,4 @@ func getDBConfig() database.DBConfig {
 		}
 	}
 	return c
-}
-
-func getEnv(name string, fallback string) string {
-	if value, ok := os.LookupEnv(name); ok {
-		return value
-	}
-	return fallback
 }

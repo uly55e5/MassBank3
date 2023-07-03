@@ -48,8 +48,12 @@ func (sp *MsSpectrum) Baseline(threshold float64) {
 			result[1] = append(result[1], sp[1][i])
 		}
 	}
+	*sp = result
 }
 
 func (sp MsSpectrum) ToMatrix() *mat.Dense {
-	return mat.NewDense(sp.Length(), 2, append(sp[0], sp[1]...))
+	if sp.Length() > 0 {
+		return mat.NewDense(sp.Length(), 2, append(sp[0], sp[1]...))
+	}
+	return nil
 }

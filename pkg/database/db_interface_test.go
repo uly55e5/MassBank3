@@ -3,6 +3,7 @@ package database
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/MassBank/MassBank3/pkg/common"
 	"github.com/MassBank/MassBank3/pkg/massbank"
 	"os"
 	"reflect"
@@ -35,13 +36,13 @@ var recordnames = []string{
 }
 
 func testRecord(i uint64) *massbank.MassBank2 {
-	var mb = mbTestRecords[recordnames[i]]
+	var mb = common.MbTestRecords[recordnames[i]]
 	return &mb
 }
 func testRecords(names []uint64) []*massbank.MassBank2 {
 	var records = []*massbank.MassBank2{}
 	for _, i := range names {
-		var mb = mbTestRecords[recordnames[i]]
+		var mb = common.MbTestRecords[recordnames[i]]
 		records = append(records, &mb)
 	}
 	return records
@@ -52,7 +53,7 @@ func testSearchResults(names []uint64, specCount int, resultCount int) SearchRes
 	searchResult.SpectraCount = specCount
 	var data = map[string]SearchResultData{}
 	for _, i := range names {
-		record := mbTestRecords[recordnames[i]]
+		record := common.MbTestRecords[recordnames[i]]
 		dataset := data[*record.Compound.InChI]
 		if dataset.Spectra == nil {
 			dataset.Spectra = []SpectrumMetaData{}
@@ -273,7 +274,7 @@ func TestMB3Database_GetRecord(t *testing.T) {
 				db,
 				db.name + " " + record,
 				args{record},
-				mbTestRecords[record],
+				common.MbTestRecords[record],
 				false,
 			}
 			tests = append(tests, test)
@@ -323,7 +324,7 @@ func TestMB3Database_GetSmiles(t *testing.T) {
 				db,
 				db.name + " " + record,
 				args{record},
-				mbTestRecords[record].Compound.Smiles,
+				common.MbTestRecords[record].Compound.Smiles,
 				false,
 			}
 			tests = append(tests, test)
@@ -717,7 +718,7 @@ func TestMB3Database_AddRecord(t *testing.T) {
 	for _, db := range DBs {
 		db.checkCount(t, 0)
 		var tests = []testData{}
-		for key, record := range mbTestRecords {
+		for key, record := range common.MbTestRecords {
 			var versionId string
 			if db.name == "mongodb" {
 				versionId = "63fcbaf4b9e0e5714f9d623b"
@@ -784,7 +785,7 @@ func TestMB3Database_AddRecords(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 				var records []*massbank.MassBank2
 				for _, i := range tt.args.records {
-					var mb = mbTestRecords[recordnames[i]]
+					var mb = common.MbTestRecords[recordnames[i]]
 					records = append(records, &mb)
 				}
 				if err := db.db.AddRecords(records, tt.args.metaDataId); (err != nil) != tt.wantErr {

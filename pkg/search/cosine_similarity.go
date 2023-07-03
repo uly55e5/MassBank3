@@ -1,22 +1,25 @@
 package search
 
 import (
+	"crypto/md5"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"github.com/MassBank/MassBank3/pkg/database"
 	"github.com/MassBank/MassBank3/pkg/massbank"
 	"gonum.org/v1/gonum/mat"
+	"math"
 	"reflect"
 )
 
 type cosineParameters struct {
 	massTolerance float64
-	theshold      int
+	theshold      float64
 }
 
 type cosineResult struct {
-	parameters cosineParameters
-	result     SearchResult
-	status     SearchStatus
+	result SearchResult
+	status SearchStatus
 }
 
 type CosineSearch struct {
@@ -44,7 +47,7 @@ func (cs CosineSearch) SetParameters(par map[string]any) error {
 	}
 	if th, ok := par["Threshold"]; ok {
 		if reflect.TypeOf(th) == reflect.TypeOf(cs.parameters.theshold) {
-			cs.parameters.theshold = th.(int)
+			cs.parameters.theshold = th.(float64)
 		}
 	}
 	return nil
@@ -60,12 +63,34 @@ func (cs CosineSearch) Search(spectrum massbank.MsSpectrum, filters database.Fil
 		return nil, err
 	}
 	id := cs.newId()
+	spectrum.Normalize(1000)
+	spectrum.Baseline(cs.parameters.theshold)
 	sp1 := spectrum.ToMatrix()
+	cs.results[id] = cosineResult{
+		result: SearchResult{
+			Scores: map[string]any{},
+			Parameters: map[string]any{
+				"Threshold":      cs.parameters.theshold,
+				"Mass Tolerance": cs.parameters.massTolerance,
+			},
+			SearchTime: 0,
+			DBMetadata: massbank.MbMetaData{},
+			Filters:    filters,
+			Limit:      0,
+			Offset:     0,
+		},
+		status: InProgress,
+	}
 	for acc, sp := range spectra {
+		sp.Baseline(cs.parameters.theshold)
 		sp2 := sp.ToMatrix()
-		sp1 = align(sp1, sp2)
-		score := cosineSearch(sp1, sp2)
-		cs.results[id].result.Scores[acc] = score
+		if sp1 != nil && sp2 != nil {
+			sp2 = align(sp1, sp2, cs.parameters.massTolerance)
+			if sp2 != nil {
+				score := cosineSearch(sp2.ColView(1).(*mat.VecDense), sp2.ColView(3).(*mat.VecDense))
+				cs.results[id].result.Scores[acc] = score
+			}
+		}
 	}
 	return &id, nil
 }
@@ -83,13 +108,40 @@ func (cs CosineSearch) GetResult(id SearchId) (*SearchResult, error) {
 }
 
 func (cs CosineSearch) newId() SearchId {
-	return ""
+	j, _ := json.Marshal(&cs)
+	var s = md5.Sum(j)
+	return SearchId(hex.EncodeToString(s[:]))
 }
 
-func align(sp1 *mat.Dense, sp2 *mat.Dense) *mat.Dense {
-	return sp1
+func align(sp1 *mat.Dense, sp2 *mat.Dense, b float64) *mat.Dense {
+	if sp1 == nil || sp2 == nil {
+		return nil
+	}
+	r1, _ := sp1.Caps()
+	r2, _ := sp2.Caps()
+	data := []float64{}
+	for i := 0; i < r2; i++ {
+		for j := 0; j < r1; j++ {
+			if sp1.At(j, 0) >= sp2.At(i, 0)-b && sp1.At(j, 0) <= sp2.At(i, 0)+b {
+				data = append(data, append(sp1.RawRowView(j), sp2.RawRowView(i)...)...)
+			}
+		}
+	}
+	if len(data) < 4 {
+		return nil
+	}
+	return mat.NewDense(len(data)/4, 4, data)
 }
 
-func cosineSearch(sp1 *mat.Dense, sp2 *mat.Dense) float64 {
-	return 0
+func cosineSearch(sp1 *mat.VecDense, sp2 *mat.VecDense) float64 {
+	result := mat.Dot(sp1, sp2) / (math.Sqrt(mat.Sum(square(sp1))) * math.Sqrt(mat.Sum(square(sp2))))
+	return result
+}
+
+func square(v *mat.VecDense) *mat.VecDense {
+	result := *v
+	for i := 0; i < v.Len(); i++ {
+		result.SetVec(i, math.Pow(v.AtVec(i), 2))
+	}
+	return &result
 }

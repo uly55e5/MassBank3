@@ -13,6 +13,9 @@ type SearchResult struct {
 	Parameters map[string]any
 	SearchTime time.Duration
 	DBMetadata massbank.MbMetaData
+	Filters    database.Filters
+	Limit      int
+	Offset     int
 }
 
 type SearchStatus int
@@ -30,5 +33,5 @@ type SimilaritySearch interface {
 	SetDatabase(db database.MB3Database)
 	Search(spectrum massbank.MsSpectrum, filters database.Filters) (SearchId, error)
 	GetStatus(searchId SearchId) (SearchStatus, string)
-	GetResult(searchId SearchId) (SearchResult, error)
+	GetResult(searchId SearchId, Limit int, Offset int) (SearchResult, error)
 }

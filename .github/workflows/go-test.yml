@@ -51,7 +51,7 @@ jobs:
       with:
         go-version: ${{matrix.go-version}}
 
-    - name: Run all go tests
+    - name: Run all go testdata
       run: go test ./... -v -race -coverprofile=coverage.txt -covermode=atomic
       env:
         MONGODB_HOST: localhost

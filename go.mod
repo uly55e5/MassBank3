@@ -8,6 +8,7 @@ require (
 	github.com/Code-Hex/dd v1.1.0
 	github.com/go-chi/cors v1.2.0
 	github.com/go-git/go-git/v5 v5.5.2
+	github.com/golang/mock v1.6.0
 	github.com/lib/pq v1.10.7
 	github.com/nullism/bqb v1.3.1
 	go.mongodb.org/mongo-driver v1.11.6
