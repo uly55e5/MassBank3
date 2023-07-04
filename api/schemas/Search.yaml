@@ -1,0 +1,53 @@
+type: object
+properties:
+  Filters:
+    type: object
+    properties:
+      Instrumenttype:
+        type: array
+        items:
+          type: string
+      MsType:
+        type: array
+        items:
+          type: string
+          enum: ["MS","MS1","MS2","MS3"]
+      IonMode:
+        type: string
+        enum: ["POSITIVE","NEGATIVE"]
+      Contributor:
+        type: array
+        items:
+          type: string
+  Compound:
+    type: object
+    propterties:
+      Name:
+        type: string
+      Mass:
+        type: number
+        format: double
+  Spectra:
+    type: object
+    properties:
+      Splash:
+        type: string
+      Peaks:
+        type: number
+      PeakDifference:
+        type: number
+  Similarity:
+    type: object
+    properties:
+      Mz:
+        type: array
+        items:
+          type: number
+          format: double
+      Intensities:
+        type: array
+        items:
+          type: number
+          format: double
+      Parameters:
+        type: object

@@ -115,7 +115,16 @@ paths:
             application/json:
               schema:
                 $ref: "./schemas/SearchResult.yaml"
-
+  /search:
+    post:
+      summmary:
+      requestBody:
+        description:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./schemas/Search.yaml"
   /records/{accession}:
     parameters:
       - name: accession
