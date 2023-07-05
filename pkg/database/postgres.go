@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/Code-Hex/dd"
 	"github.com/MassBank/MassBank3/pkg/massbank"
 	"github.com/lib/pq"
 	_ "github.com/lib/pq"
@@ -583,7 +582,6 @@ func (p *PostgresSQLDB) GetSmiles(accession *string) (*string, error) {
 	if err := p.database.QueryRow("SELECT document->'compound'->>'smiles' FROM massbank WHERE document->>'accession' = $1", *accession).Scan(&b); err != nil {
 		return nil, err
 	}
-	println(dd.Dump(b))
 	result = string(b)
 	return &result, nil
 }

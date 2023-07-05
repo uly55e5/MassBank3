@@ -1,9 +1,11 @@
 FROM docker.io/golang:1.20 AS build
 WORKDIR /go/src
 COPY cmd/mb3dbtool/main.go ./cmd/mb3dbtool/
+COPY cmd/ ./cmd
 COPY pkg/ ./pkg
 COPY go.mod .
 COPY go.sum .
+COPY test/ ./test
 COPY test-data/ ./test-data
 
 RUN go get -d -v ./...

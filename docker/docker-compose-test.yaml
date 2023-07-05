@@ -19,17 +19,11 @@ services:
       POSTGRES_USER:     "mbtestuser"
       POSTGRES_DB:       "mbtestdb"
 
-  mb3server:
+  cdkdepict:
     extends:
       file: docker-compose-common.yaml
-      service: mb3server
-    build: ../
-    depends_on:
-      testpostgres:
-        condition: service_healthy
-      testmongo:
-        condition: service_healthy
-  
+      service: cdkdepict
+
   mb3test:
     build:
       context: ..

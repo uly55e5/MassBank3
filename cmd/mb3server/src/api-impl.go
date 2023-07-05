@@ -19,6 +19,9 @@ func initDB() error {
 	if db != nil && db.Ping() == nil {
 		return nil
 	}
+	if ServerConfig == nil {
+		panic("Missing configuration for server.")
+	}
 	db, err = database.InitDb(ServerConfig.DBConfig)
 	return err
 }
