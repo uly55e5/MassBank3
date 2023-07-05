@@ -11,6 +11,8 @@ package mb3server
 
 // SearchResultDataInner - Data for a single compound.
 type SearchResultDataInner struct {
+	Score map[string]interface{} `json:"score,omitempty"`
+
 	Data map[string]interface{} `json:"data,omitempty"`
 
 	// Compound names.

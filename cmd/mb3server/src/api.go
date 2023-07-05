@@ -24,6 +24,7 @@ type DefaultApiRouter interface {
 	GetRecord(http.ResponseWriter, *http.Request)
 	GetRecords(http.ResponseWriter, *http.Request)
 	GetSVG(http.ResponseWriter, *http.Request)
+	SearchSpectra(http.ResponseWriter, *http.Request)
 }
 
 // DefaultApiServicer defines the api actions for the DefaultApi service
@@ -37,4 +38,5 @@ type DefaultApiServicer interface {
 	GetRecord(context.Context, string) (ImplResponse, error)
 	GetRecords(context.Context, []string, string, []string, string, string, string, float64, string, []string, int32, []string, []string, int32, int32, int32, string, []string) (ImplResponse, error)
 	GetSVG(context.Context, string) (ImplResponse, error)
+	SearchSpectra(context.Context, Search) (ImplResponse, error)
 }

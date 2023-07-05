@@ -11,10 +11,10 @@ properties:
         type: array
         items:
           type: string
-          enum: ["MS","MS1","MS2","MS3"]
+          enum: [ "MS","MS1","MS2","MS3" ]
       IonMode:
         type: string
-        enum: ["POSITIVE","NEGATIVE"]
+        enum: [ "POSITIVE","NEGATIVE" ]
       Contributor:
         type: array
         items:
@@ -27,15 +27,34 @@ properties:
       Mass:
         type: number
         format: double
+      InChIKey:
+        type: string
+      Formula:
+        type: string
   Spectra:
     type: object
     properties:
       Splash:
         type: string
       Peaks:
-        type: number
+        type: array
+        items:
+          type: number
+          format: double
       PeakDifference:
-        type: number
+        type: array
+        items:
+          type: number
+          format: double
+  Parameters:
+    IntensityCutoff:
+      type: number
+    MassTolerance:
+      type: number
+    Limit:
+      type: integer
+    Page:
+      type: integer
   Similarity:
     type: object
     properties:

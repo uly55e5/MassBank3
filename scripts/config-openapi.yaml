@@ -14,6 +14,7 @@ inputSpec: ../api/openapi.yml
 templateDir: ./go-server-template
 gitUserId: MassBank
 gitRepoId: MassBank3/cmd/mb3server
+moduleId: MassBank3
 enablePostProcessFile: true
 generateAliasAsModel: false
 hideGenerationTimestamp: true

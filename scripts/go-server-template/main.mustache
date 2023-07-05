@@ -4,17 +4,23 @@ package main
 import (
 	"log"
 	"net/http"
-
+    "strconv"
+    "{{gitHost}}/{{gitUserId}}/{{moduleId}}/pkg/config"
 	{{packageName}} "{{gitHost}}/{{gitUserId}}/{{gitRepoId}}/{{sourceFolder}}"
 )
 
 func main() {
 	log.Printf("Server started")
+    {{packageName}}.ServerConfig = config.GetServerConfig()
+    if {{packageName}}.ServerConfig == nil {
+        log.Fatal("Could not read config variables")
+    }
 {{#apiInfo}}{{#apis}}
 	{{classname}}Service := {{packageName}}.New{{classname}}Service()
 	{{classname}}Controller := {{packageName}}.New{{classname}}Controller({{classname}}Service)
 {{/apis}}{{/apiInfo}}
 	router := {{packageName}}.NewRouter({{#apiInfo}}{{#apis}}{{classname}}Controller{{^-last}}, {{/-last}}{{/apis}}{{/apiInfo}})
 
-	log.Fatal(http.ListenAndServe(":{{serverPort}}", router))
+    log.Fatal(http.ListenAndServe(":"+strconv.FormatUint(uint64({{packageName}}.ServerConfig.ServerPort), 10), router))
+
 }

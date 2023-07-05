@@ -9,6 +9,9 @@ properties:
       description: Data for a single compound.
       type: object
       properties:
+        score:
+          type: object
+          additionalProperties: true
         data:
           type: object
         name:

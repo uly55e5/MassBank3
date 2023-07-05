@@ -10,12 +10,11 @@
 package main
 
 import (
+	mb3server "github.com/MassBank/MassBank3/cmd/mb3server/src"
 	"github.com/MassBank/MassBank3/pkg/config"
 	"log"
 	"net/http"
 	"strconv"
-
-	mb3server "github.com/MassBank/MassBank3/cmd/mb3server/src"
 )
 
 func main() {
@@ -24,10 +23,12 @@ func main() {
 	if mb3server.ServerConfig == nil {
 		log.Fatal("Could not read config variables")
 	}
+
 	DefaultApiService := mb3server.NewDefaultApiService()
 	DefaultApiController := mb3server.NewDefaultApiController(DefaultApiService)
 
 	router := mb3server.NewRouter(DefaultApiController)
 
 	log.Fatal(http.ListenAndServe(":"+strconv.FormatUint(uint64(mb3server.ServerConfig.ServerPort), 10), router))
+
 }

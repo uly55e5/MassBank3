@@ -154,6 +154,24 @@ paths:
                 $ref: '#/components/schemas/SearchResult'
           description: A list of records
       summary: Get a list of records
+  /search:
+    post:
+      operationId: searchSpectra
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Search'
+        description: The search parameters
+        required: true
+      responses:
+        "200":
+          content:
+            applicaton/json:
+              schema:
+                $ref: '#/components/schemas/SearchResult'
+          description: The search result
+      summary: Search for Spectra
   /records/{accession}:
     get:
       operationId: getRecord
@@ -350,7 +368,9 @@ components:
           result_count: 0
           timestamp: timestamp
         data:
-        - spectra:
+        - score:
+            key: ""
+          spectra:
           - id: id
             title: title
           - id: id
@@ -365,7 +385,9 @@ components:
           - name
           - name
           formula: formula
-        - spectra:
+        - score:
+            key: ""
+          spectra:
           - id: id
             title: title
           - id: id
@@ -388,6 +410,49 @@ components:
           items:
             $ref: '#/components/schemas/SearchResult_data_inner'
           type: array
+      type: object
+    Search:
+      example:
+        Filters:
+          MsType:
+          - MS
+          - MS
+          IonMode: POSITIVE
+          Instrumenttype:
+          - Instrumenttype
+          - Instrumenttype
+          Contributor:
+          - Contributor
+          - Contributor
+        Parameters: "{}"
+        Similarity:
+          Parameters: "{}"
+          Intensities:
+          - 5.962133916683182
+          - 5.962133916683182
+          Mz:
+          - 1.4658129805029452
+          - 1.4658129805029452
+        Compound: "{}"
+        Spectra:
+          PeakDifference:
+          - 6.027456183070403
+          - 6.027456183070403
+          Peaks:
+          - 0.8008281904610115
+          - 0.8008281904610115
+          Splash: Splash
+      properties:
+        Filters:
+          $ref: '#/components/schemas/Search_Filters'
+        Compound:
+          type: object
+        Spectra:
+          $ref: '#/components/schemas/Search_Spectra'
+        Parameters:
+          type: object
+        Similarity:
+          $ref: '#/components/schemas/Search_Similarity'
       type: object
     MBRecord:
       example:
@@ -812,6 +877,8 @@ components:
     SearchResult_data_inner:
       description: Data for a single compound.
       example:
+        score:
+          key: ""
         spectra:
         - id: id
           title: title
@@ -828,6 +895,9 @@ components:
         - name
         formula: formula
       properties:
+        score:
+          additionalProperties: true
+          type: object
         data:
           type: object
         name:
@@ -855,6 +925,88 @@ components:
           items:
             $ref: '#/components/schemas/SearchResult_data_inner_spectra_inner'
           type: array
+      type: object
+    Search_Filters:
+      example:
+        MsType:
+        - MS
+        - MS
+        IonMode: POSITIVE
+        Instrumenttype:
+        - Instrumenttype
+        - Instrumenttype
+        Contributor:
+        - Contributor
+        - Contributor
+      properties:
+        Instrumenttype:
+          items:
+            type: string
+          type: array
+        MsType:
+          items:
+            enum:
+            - MS
+            - MS1
+            - MS2
+            - MS3
+            type: string
+          type: array
+        IonMode:
+          enum:
+          - POSITIVE
+          - NEGATIVE
+          type: string
+        Contributor:
+          items:
+            type: string
+          type: array
+      type: object
+    Search_Spectra:
+      example:
+        PeakDifference:
+        - 6.027456183070403
+        - 6.027456183070403
+        Peaks:
+        - 0.8008281904610115
+        - 0.8008281904610115
+        Splash: Splash
+      properties:
+        Splash:
+          type: string
+        Peaks:
+          items:
+            format: double
+            type: number
+          type: array
+        PeakDifference:
+          items:
+            format: double
+            type: number
+          type: array
+      type: object
+    Search_Similarity:
+      example:
+        Parameters: "{}"
+        Intensities:
+        - 5.962133916683182
+        - 5.962133916683182
+        Mz:
+        - 1.4658129805029452
+        - 1.4658129805029452
+      properties:
+        Mz:
+          items:
+            format: double
+            type: number
+          type: array
+        Intensities:
+          items:
+            format: double
+            type: number
+          type: array
+        Parameters:
+          type: object
       type: object
     MBRecord_deprecated:
       description: Mark the record as deprecated

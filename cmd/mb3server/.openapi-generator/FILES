@@ -34,8 +34,12 @@ src/model_mb_record_species.go
 src/model_metadata.go
 src/model_ms_data_processing_inner.go
 src/model_ms_focused_ion_inner.go
+src/model_search.go
+src/model_search_filters.go
 src/model_search_result.go
 src/model_search_result_data_inner.go
 src/model_search_result_data_inner_spectra_inner.go
+src/model_search_similarity.go
+src/model_search_spectra.go
 src/model_string_count_inner.go
 src/routers.go

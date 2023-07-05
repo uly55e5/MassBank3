@@ -117,14 +117,22 @@ paths:
                 $ref: "./schemas/SearchResult.yaml"
   /search:
     post:
-      summmary:
+      summary: Search for Spectra
+      operationId: searchSpectra
       requestBody:
-        description:
+        description: The search parameters
         required: true
         content:
           application/json:
             schema:
               $ref: "./schemas/Search.yaml"
+      responses:
+        '200':
+          description: The search result
+          content:
+            applicaton/json:
+              schema:
+                $ref: "./schemas/SearchResult.yaml"
   /records/{accession}:
     parameters:
       - name: accession

@@ -85,6 +85,12 @@ func (c *DefaultApiController) Routes() Routes {
 			"/v1/records/{accession}/svg",
 			c.GetSVG,
 		},
+		{
+			"SearchSpectra",
+			strings.ToUpper("Post"),
+			"/v1/search",
+			c.SearchSpectra,
+		},
 	}
 }
 
@@ -203,6 +209,30 @@ func (c *DefaultApiController) GetSVG(w http.ResponseWriter, r *http.Request) {
 	accessionParam := chi.URLParam(r, "accession")
 
 	result, err := c.service.GetSVG(r.Context(), accessionParam)
+	// If an error occurred, encode the error with the status code
+	if err != nil {
+		c.errorHandler(w, r, err, &result)
+		return
+	}
+	// If no error, encode the body and the result code
+	EncodeJSONResponse(result.Body, &result.Code, result.Headers, w)
+
+}
+
+// SearchSpectra - Search for Spectra
+func (c *DefaultApiController) SearchSpectra(w http.ResponseWriter, r *http.Request) {
+	searchParam := Search{}
+	d := json.NewDecoder(r.Body)
+	d.DisallowUnknownFields()
+	if err := d.Decode(&searchParam); err != nil {
+		c.errorHandler(w, r, &ParsingError{Err: err}, nil)
+		return
+	}
+	if err := AssertSearchRequired(searchParam); err != nil {
+		c.errorHandler(w, r, err, nil)
+		return
+	}
+	result, err := c.service.SearchSpectra(r.Context(), searchParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		c.errorHandler(w, r, err, &result)
