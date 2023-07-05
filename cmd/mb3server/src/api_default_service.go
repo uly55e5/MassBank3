@@ -21,6 +21,11 @@ import (
 type DefaultApiService struct {
 }
 
+func (s *DefaultApiService) SearchSpectra(ctx context.Context, search Search) (ImplResponse, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (s *DefaultApiService) GetSVG(ctx context.Context, s2 string) (ImplResponse, error) {
 	svg, err := GetSvg(s2)
 	return Response(http.StatusOK, *svg), err
