@@ -2,14 +2,6 @@ version: '3.1'
 
 services:
 
-  testmongo:
-    extends:
-      file: docker-compose-common.yaml
-      service: mongodb
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: "mbtestuser"
-      MONGO_INITDB_ROOT_PASSWORD: "mbtestpwd"
-  
   testpostgres:
     extends:
       file: docker-compose-common.yaml
@@ -32,6 +24,4 @@ services:
       - ./testout:/go/src/out
     depends_on:
       testpostgres:
-        condition: service_healthy
-      testmongo:
         condition: service_healthy

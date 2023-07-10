@@ -1,9 +1,7 @@
 package database
 
 import (
-	"github.com/Code-Hex/dd"
 	"github.com/MassBank/MassBank3/pkg/massbank"
-	"log"
 	"math"
 	"time"
 )
@@ -122,7 +120,7 @@ type MB3MetaData struct {
 type SearchResult struct {
 	SpectraCount int
 	ResultCount  int
-	Data         map[string]SearchResultData
+	Data         []SearchResultData
 }
 
 type SpectrumMetaData struct {
@@ -131,6 +129,7 @@ type SpectrumMetaData struct {
 }
 
 type SearchResultData struct {
+	Inchi   string
 	Names   []string
 	Formula string
 	Mass    float64
@@ -225,17 +224,9 @@ var db MB3Database
 func InitDb(dbConfig DBConfig) (MB3Database, error) {
 	if db == nil {
 		var err error
-		if dbConfig.Database == MongoDB {
-			db, err = NewMongoDB(dbConfig)
-			if err != nil {
-				panic(err)
-			}
-		} else if dbConfig.Database == Postgres {
-			db, err = NewPostgresSQLDb(dbConfig)
-			log.Println(dd.Dump(db))
-			if err != nil {
-				panic(err)
-			}
+		db, err = NewPostgresSQLDb(dbConfig)
+		if err != nil {
+			panic(err)
 		}
 		if err = db.Connect(); err != nil {
 			panic(err)

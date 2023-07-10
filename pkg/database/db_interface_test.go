@@ -51,24 +51,32 @@ func testRecords(names []uint64) []*massbank.MassBank2 {
 func testSearchResults(names []uint64, specCount int, resultCount int) SearchResult {
 	var searchResult = SearchResult{}
 	searchResult.SpectraCount = specCount
-	var data = map[string]SearchResultData{}
+	var data = []SearchResultData{}
 	for _, i := range names {
 		record := common.MbTestRecords[recordnames[i]]
-		dataset := data[*record.Compound.InChI]
-		if dataset.Spectra == nil {
-			dataset.Spectra = []SpectrumMetaData{}
+		var dataset *SearchResultData = nil
+		for _, ds := range data {
+			if ds.Inchi == *record.Compound.InChI {
+				dataset = &ds
+			}
+		}
+		if dataset == nil {
+			data = append(data, SearchResultData{
+				Inchi:   *record.Compound.InChI,
+				Names:   []string{},
+				Formula: *record.Compound.Formula,
+				Mass:    *record.Compound.Mass,
+				Smiles:  *record.Compound.Smiles,
+				Spectra: []SpectrumMetaData{},
+			})
+			dataset = &data[len(data)-1]
 		}
 		dataset.Spectra = append(dataset.Spectra, SpectrumMetaData{*record.Accession, *record.RecordTitle})
-		dataset.Smiles = *record.Compound.Smiles
-		dataset.Formula = *record.Compound.Formula
-		dataset.Mass = *record.Compound.Mass
 		dataset.Names = append(dataset.Names, *record.Compound.Names...)
-		data[*record.Compound.InChI] = dataset
+
 	}
 	searchResult.Data = data
 	searchResult.ResultCount = resultCount
-	//println("Want:")
-	//println(dd.Dump(searchResult))
 	return searchResult
 }
 
@@ -88,8 +96,7 @@ type testDB struct {
 
 func initDBs(set DbInitSet) ([]testDB, error) {
 	var testDBs = []testDBinit{
-		{"mongodb", initMongoTestDB},
-		{"postgres", initPostgresTestDB},
+		{"postgres", InitPostgresTestDB},
 	}
 	var result = []testDB{}
 	for _, d := range testDBs {
@@ -125,18 +132,6 @@ func TestMB3Database_Connect(t *testing.T) {
 		{
 			"Postgres with wrong host",
 			TestDatabases["pg wrong host"],
-			true,
-		},
-		{"MongoDB valid",
-			TestDatabases["mg valid"],
-			false,
-		},
-		{"MongoDB valid with connection string",
-			TestDatabases["mg valid conn string"],
-			false,
-		},
-		{"MongoDB with wrong host",
-			TestDatabases["mg wrong host"],
 			true,
 		},
 	}
@@ -176,26 +171,6 @@ func TestMB3Database_Disconnect(t *testing.T) {
 			TestDatabases["pg wrong host"],
 			true,
 		},
-		{"MongoDB valid",
-			TestDatabases["mg valid"],
-			false,
-		},
-		{"MongoDB valid second time",
-			TestDatabases["mg valid"],
-			true,
-		},
-		{"MongoDB with wrong host",
-			TestDatabases["mg wrong host"],
-			true,
-		},
-		{"MongoDB with connection string",
-			TestDatabases["mg valid conn string"],
-			false,
-		},
-		{"MongoDB with connection string second time",
-			TestDatabases["mg valid conn string"],
-			true,
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -207,7 +182,7 @@ func TestMB3Database_Disconnect(t *testing.T) {
 }
 
 func TestMb3Database_Count(t *testing.T) {
-	DBs, err := initDBs(Main)
+	DBs, err := initDBs(Test_DS_Main)
 	if err != nil {
 		t.Fatal("Could not init Databases: ", err.Error())
 	}
@@ -219,7 +194,7 @@ func TestMb3Database_Count(t *testing.T) {
 			t.Errorf("%s: Could not count second time exptected 8 got %v: %v", db.name, c, err)
 		}
 	}
-	DBs, err = initDBs(All)
+	DBs, err = initDBs(Test_DS_All)
 	if err != nil {
 		t.Fatal("Could not init Databases: ", err.Error())
 	}
@@ -234,7 +209,7 @@ func TestMb3Database_Count(t *testing.T) {
 }
 
 func TestMB3Database_DropAllRecords(t *testing.T) {
-	DBs, err := initDBs(Main)
+	DBs, err := initDBs(Test_DS_Main)
 	if err != nil {
 		t.Fatal("Could not init Databases: ", err.Error())
 	}
@@ -255,7 +230,7 @@ func TestMB3Database_GetRecord(t *testing.T) {
 	type args struct {
 		s string
 	}
-	DBs, err := initDBs(All)
+	DBs, err := initDBs(Test_DS_All)
 	if err != nil {
 		t.Fatal("Could not init Databases: ", err.Error())
 	}
@@ -305,7 +280,7 @@ func TestMB3Database_GetSmiles(t *testing.T) {
 	type args struct {
 		s string
 	}
-	DBs, err := initDBs(All)
+	DBs, err := initDBs(Test_DS_All)
 	if err != nil {
 		t.Fatal("Could not init Databases: ", err.Error())
 	}
@@ -351,7 +326,7 @@ func TestMB3Database_GetSmiles(t *testing.T) {
 }
 
 func TestMB3Database_GetRecords(t *testing.T) {
-	DBs, err := initDBs(All)
+	DBs, err := initDBs(Test_DS_All)
 	if err != nil {
 		t.Fatal("Could not init Databases: ", err.Error())
 	}
@@ -617,10 +592,15 @@ func TestMB3Database_GetRecords(t *testing.T) {
 }
 
 func compareDbResults(t *testing.T, want SearchResult, got SearchResult) {
-	for wk, w := range want.Data {
+	for _, w := range want.Data {
 		bw, errw := json.Marshal(w)
-		found := false
-		if g, ok := got.Data[wk]; ok {
+		foundSpec := false
+		foundInchi := false
+		for _, g := range got.Data {
+			if g.Inchi != w.Inchi {
+				continue
+			}
+			foundInchi = true
 			if g.Formula != w.Formula {
 				t.Errorf("Result formula does not match: got %v , want %v", g.Formula, w.Formula)
 			}
@@ -637,17 +617,18 @@ func compareDbResults(t *testing.T, want SearchResult, got SearchResult) {
 			for _, spw := range w.Spectra {
 				for _, sp := range g.Spectra {
 					if sp.Id == spw.Id {
-						found = true
+						foundSpec = true
 						if string(bg) != string(bw) || errg != nil || errw != nil {
 							t.Errorf("\nwant: %v \ngot : %v\n", string(bw), string(bg))
 						}
 					}
 				}
 			}
-		} else {
-			t.Errorf("Could not find spectra for %v in result", wk)
 		}
-		if found == false {
+		if !foundInchi {
+			t.Errorf("Could not find spectra for %v in result", w.Inchi)
+		}
+		if !foundSpec {
 			for _, spw := range w.Spectra {
 				gotNames := []string{}
 				for _, g := range got.Data {
@@ -655,9 +636,7 @@ func compareDbResults(t *testing.T, want SearchResult, got SearchResult) {
 						gotNames = append(gotNames, sp.Id)
 					}
 				}
-				//println("Want: ", dd.Dump(want))
-				//println("Got: ", dd.Dump(got))
-				t.Errorf("Expected Accession %v to be in result but it was not found. Result was %v", spw.Id, gotNames)
+				t.Errorf("Expected Accession %v to be in result but it was not foundSpec. Result was %v", spw.Id, gotNames)
 			}
 		}
 
@@ -665,7 +644,7 @@ func compareDbResults(t *testing.T, want SearchResult, got SearchResult) {
 }
 
 func TestMB3Database_GetUniqueValues(t *testing.T) {
-	DBs, err := initDBs(All)
+	DBs, err := initDBs(Test_DS_All)
 	if err != nil {
 		t.Fatal("Could not init Databases: ", err.Error())
 	}
@@ -702,7 +681,7 @@ func TestMB3Database_GetUniqueValues(t *testing.T) {
 }
 
 func TestMB3Database_AddRecord(t *testing.T) {
-	DBs, err := initDBs(Empty)
+	DBs, err := initDBs(Test_DS_Empty)
 	if err != nil {
 		t.Fatal("Could not init Databases: ", err.Error())
 	}
@@ -744,7 +723,7 @@ func TestMB3Database_AddRecord(t *testing.T) {
 }
 
 func TestMB3Database_AddRecords(t *testing.T) {
-	DBs, err := initDBs(Empty)
+	DBs, err := initDBs(Test_DS_Empty)
 	if err != nil {
 		t.Fatal("Could not init Databases: ", err.Error())
 	}
@@ -798,7 +777,7 @@ func TestMB3Database_AddRecords(t *testing.T) {
 }
 
 func TestMB3Database_UpdateMetadata(t *testing.T) {
-	DBs, err := initDBs(Main)
+	DBs, err := initDBs(Test_DS_Main)
 	if err != nil {
 		t.Fatal("Could not init Databases: ", err.Error())
 	}
@@ -858,7 +837,7 @@ func TestMB3Database_UpdateMetadata(t *testing.T) {
 }
 
 func TestMB3Database_UpdateRecord(t *testing.T) {
-	DBs, err := initDBs(Main)
+	DBs, err := initDBs(Test_DS_Main)
 	if err != nil {
 		t.Fatal("Could not init Databases: ", err.Error())
 	}
@@ -921,7 +900,7 @@ func TestMB3Database_UpdateRecord(t *testing.T) {
 }
 
 func TestMB3Database_UpdateRecords(t *testing.T) {
-	DBs, err := initDBs(Main)
+	DBs, err := initDBs(Test_DS_Main)
 	if err != nil {
 		t.Fatal("Could not init Databases: ", err.Error())
 	}
@@ -992,7 +971,7 @@ func TestMB3Database_UpdateRecords(t *testing.T) {
 }
 
 func TestMB3Database_GetMetadata(t *testing.T) {
-	DBs, err := initDBs(All)
+	DBs, err := initDBs(Test_DS_All)
 	if err != nil {
 		t.Fatal("Could not init Databases: ", err.Error())
 	}

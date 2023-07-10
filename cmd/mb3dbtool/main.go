@@ -21,16 +21,9 @@ func main() {
 	var userConfig = config.GetToolConfig()
 	var db database.MB3Database
 	var err error
-	if userConfig.Database == database.MongoDB {
-		db, err = database.NewMongoDB(userConfig.DBConfig)
-		if err != nil {
-			panic(err)
-		}
-	} else if userConfig.Database == database.Postgres {
-		db, err = database.NewPostgresSQLDb(userConfig.DBConfig)
-		if err != nil {
-			panic(err)
-		}
+	db, err = database.NewPostgresSQLDb(userConfig.DBConfig)
+	if err != nil {
+		panic(err)
 	}
 	if err = db.Connect(); err != nil {
 		panic(err)

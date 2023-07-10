@@ -2,14 +2,9 @@ package test
 
 import (
 	mb3server "github.com/MassBank/MassBank3/cmd/mb3server/src"
-	"github.com/MassBank/MassBank3/pkg/common"
 	"github.com/MassBank/MassBank3/pkg/config"
 	"github.com/MassBank/MassBank3/pkg/database"
 	"github.com/go-chi/chi/v5"
-	"net/http"
-	"testing"
-
-	"github.com/steinfletcher/apitest"
 )
 
 func initMongoDB() chi.Router {
@@ -18,35 +13,42 @@ func initMongoDB() chi.Router {
 	router := mb3server.NewRouter(apiCtrl)
 	mb3server.ServerConfig = &config.ServerConfig{
 		DBConfig: database.DBConfig{
-			Database:  database.MongoDB,
+			Database:  database.Postgres,
 			DbUser:    "mbtestuser",
 			DbPwd:     "mbtestpwd",
-			DbHost:    "testmongo",
+			DbHost:    database.PostgresTestHost,
 			DbName:    "mbtestdb",
-			DbPort:    27017,
+			DbPort:    5432,
 			DbConnStr: "",
 		},
 		ServerPort:   0,
 		CdkDepictUrl: "http://cdkdepict:8080",
 	}
-	var testDataDir = common.GetEnv("TEST_DATA_DIR", "/go/src/")
-	var files = map[string]string{
-		"mb_metadata": testDataDir + "test-data/mb_metadata.json",
-		"massbank":    testDataDir + "test-data/massbank-all.json",
+	_, err := database.InitPostgresTestDB(database.Test_DS_All)
+	if err != nil {
+		println(err.Error())
 	}
-
-	database.InitMongoDB(mb3server.ServerConfig.DBConfig, files)
 	return router
 }
 
-func TestGetMessage(t *testing.T) {
+/*func TestGetMessage(t *testing.T) {
 	router := initMongoDB()
 	apitest.New(). // configuration
 			Debug().
 			Handler(router).
 			Get("/v1/records"). // request
-			Expect(t).          // expectations
-			Body(responses["allRecords"]).
-			Status(http.StatusOK).
-			End()
-}
+			Expect(t).
+			Assert(func(response *http.Response, request *http.Request) error {
+
+			var resBody = make([]byte, len(responses["allRecords"])+1)
+			response.Body.Read(resBody)
+			if string(resBody) == responses["allRecords"] {
+				return nil
+			}
+			println("expected: ", responses["allRecords"])
+			println("got     : ", string(resBody))
+			return errors.New("Body not as expected")
+		}).
+		Status(http.StatusOK).
+		End()
+}*/

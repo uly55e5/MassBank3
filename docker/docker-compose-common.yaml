@@ -2,19 +2,6 @@ version: '3.1'
 
 services:
 
-  mongodb:
-    image: docker.io/mongo:latest
-    restart: always
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: ${DB_USER}
-      MONGO_INITDB_ROOT_PASSWORD: ${DB_PASSWORD}
-    healthcheck:
-      test:  ["CMD","mongosh", "--eval", "\"db.adminCommand('ping')\""]
-      interval: 10s
-      timeout: 30s
-      retries: 5
-      start_period: 30s
-
   postgres:
     image: docker.io/postgres:latest
     restart: always

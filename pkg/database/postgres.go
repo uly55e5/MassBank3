@@ -10,6 +10,7 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/nullism/bqb"
 	"log"
+	"sort"
 	"strconv"
 )
 
@@ -239,7 +240,7 @@ func (p *PostgresSQLDB) GetRecords(filters Filters) (*SearchResult, error) {
 		peakdiffquery = bqb.New("JOIN (WITH t AS (SELECT mz,id FROM (SELECT jsonb_array_elements(document->'peak'->'peak'->'mz')::float AS mz,jsonb_array_elements(document->'peak'->'peak'->'rel')::int AS rel,id FROM massbank) as relmz WHERE relmz.rel>=?) SELECT DISTINCT t1.id FROM t as t1 LEFT JOIN t as t2 ON t1.id=t2.id ?) AS diff ON massbank.id = diff.id", *filters.IntensityCutoff, innerwhere)
 
 	}
-	query := bqb.New("WITH mbdeprecated as (select count(*) OVER() spectraCount, json_build_object('id', document->>'accession','title', document->>'title')::json spectrum, document->'compound' compound FROM massbank ? ?) SELECT  count(*) OVER() resultCount, (array_agg(DISTINCT spectraCount))[1] spectraCount, compound->>'inchi' inchi, array_to_json(array_agg(spectrum ORDER BY spectrum->>'id')) spectra, array_to_json(array_agg(DISTINCT compound->>'formula')) formula, array_to_json(array_agg(DISTINCT compound->>'mass')) mass, array_to_json(array_agg(DISTINCT compound->'name')) names , array_to_json(array_agg(DISTINCT compound->>'smiles')) smiles FROM mbdeprecated GROUP BY inchi", peakdiffquery, where)
+	query := bqb.New("WITH mbdeprecated as (select count(*) OVER() spectraCount, json_build_object('id', document->>'accession','title', document->>'title')::json spectrum, document->'compound' compound FROM massbank ? ?) SELECT  count(*) OVER() resultCount, (array_agg(DISTINCT spectraCount))[1] spectraCount, compound->>'inchi' inchi, array_to_json(array_agg(spectrum ORDER BY spectrum->>'title')) spectra, array_to_json(array_agg(DISTINCT compound->>'formula')) formula, array_to_json(array_agg(DISTINCT compound->>'mass')) mass, array_to_json(array_agg(DISTINCT compound->'name')) names , array_to_json(array_agg(DISTINCT compound->>'smiles')) smiles FROM mbdeprecated GROUP BY inchi", peakdiffquery, where)
 	query.Space("ORDER BY (array_agg(spectrum))[1]->>'title' ASC LIMIT ? OFFSET ?", filters.Limit, filters.Offset)
 	sql, params, err := query.ToPgsql()
 	rows, err := p.database.Query(sql, params...)
@@ -249,7 +250,7 @@ func (p *PostgresSQLDB) GetRecords(filters Filters) (*SearchResult, error) {
 	var searchResult = SearchResult{
 		SpectraCount: 0,
 		ResultCount:  0,
-		Data:         map[string]SearchResultData{},
+		Data:         []SearchResultData{},
 	}
 	for rows.Next() {
 		var row = struct {
@@ -288,21 +289,25 @@ func (p *PostgresSQLDB) GetRecords(filters Filters) (*SearchResult, error) {
 		var namesMap = map[string]bool{}
 		for _, nn := range row.names {
 			for _, n := range nn {
-				namesMap[n] = true
+				if n != "" {
+					namesMap[n] = true
+				}
 			}
 		}
 		names := []string{}
 		for k := range namesMap {
 			names = append(names, k)
 		}
+		sort.Strings(names)
 		data := SearchResultData{
+			Inchi:   row.inchi,
 			Names:   names,
 			Formula: row.formula[0],
 			Mass:    row.mass[0],
 			Smiles:  row.smiles[0],
 			Spectra: row.spectra,
 		}
-		searchResult.Data[row.inchi] = data
+		searchResult.Data = append(searchResult.Data, data)
 	}
 	return &searchResult, nil
 }
