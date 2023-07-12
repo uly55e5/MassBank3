@@ -57,7 +57,7 @@ func (cs CosineSearch) SetDatabase(mb3Database database.MB3Database) {
 
 }
 
-func (cs CosineSearch) Search(spectrum massbank.MsSpectrum, filters database.Filters) (*SearchId, error) {
+func (cs CosineSearch) Search(spectrum *massbank.MsSpectrum, filters database.Filters) (*SearchId, error) {
 	spectra, err := cs.database.GetSpectra(filters)
 	if err != nil {
 		return nil, err

@@ -86,7 +86,7 @@ func TestCosineSearch_GetStatus(t *testing.T) {
 
 func TestCosineSearch_Search(t *testing.T) {
 	type args struct {
-		spectrum massbank.MsSpectrum
+		spectrum *massbank.MsSpectrum
 		filters  database.Filters
 	}
 	mockCtrl := gomock.NewController(t)
@@ -126,14 +126,14 @@ func TestCosineSearch_Search(t *testing.T) {
 	}
 }
 
-func getTestSpectra() map[string]massbank.MsSpectrum {
-	result := map[string]massbank.MsSpectrum{}
+func getTestSpectra() database.SpectraList {
+	result := map[string]*massbank.MsSpectrum{}
 	for k, v := range common.MbTestRecords {
 		sp, err := massbank.NewMsSpectrum(v.Peak.Peak.Mz, v.Peak.Peak.Intensity)
 		if err != nil {
 
 		} else {
-			result[k] = *sp
+			result[k] = sp
 		}
 	}
 	return result

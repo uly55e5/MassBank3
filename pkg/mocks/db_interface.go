@@ -181,10 +181,10 @@ func (mr *MockMB3DatabaseMockRecorder) GetSmiles(accession interface{}) *gomock.
 }
 
 // GetSpectra mocks base method.
-func (m *MockMB3Database) GetSpectra(filters database.Filters) (map[string]massbank.MsSpectrum, error) {
+func (m *MockMB3Database) GetSpectra(filters database.Filters) (database.SpectraList, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetSpectra", filters)
-	ret0, _ := ret[0].(map[string]massbank.MsSpectrum)
+	ret0, _ := ret[0].(database.SpectraList)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -208,6 +208,21 @@ func (m *MockMB3Database) GetUniqueValues(filters database.Filters) (database.MB
 func (mr *MockMB3DatabaseMockRecorder) GetUniqueValues(filters interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUniqueValues", reflect.TypeOf((*MockMB3Database)(nil).GetUniqueValues), filters)
+}
+
+// IsEmpty mocks base method.
+func (m *MockMB3Database) IsEmpty() (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsEmpty")
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// IsEmpty indicates an expected call of IsEmpty.
+func (mr *MockMB3DatabaseMockRecorder) IsEmpty() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsEmpty", reflect.TypeOf((*MockMB3Database)(nil).IsEmpty))
 }
 
 // Ping mocks base method.

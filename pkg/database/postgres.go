@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/MassBank/MassBank3/pkg/common"
 	"github.com/MassBank/MassBank3/pkg/massbank"
 	"github.com/lib/pq"
 	_ "github.com/lib/pq"
@@ -17,36 +18,13 @@ import (
 // PostgresSQLDB is a struct representing a postgres connection. This should implement
 // the [MB3Database] interface.
 type PostgresSQLDB struct {
-	user       string
-	dbname     string
-	password   string
-	host       string
-	port       uint
-	connString string
-	database   *sql.DB
-}
-
-func (p *PostgresSQLDB) GetSpectra(filters Filters) (map[string]massbank.MsSpectrum, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (p *PostgresSQLDB) GetMetaData() (*MB3MetaData, error) {
-
-	var result MB3MetaData
-	if err := p.database.QueryRow("SELECT version,timestamp at time zone 'UTC',commit FROM metadata LIMIT 1").Scan(&result.StoredMetadata.Version, &result.StoredMetadata.TimeStamp, &result.StoredMetadata.GitCommit); err != nil {
-		return nil, err
-	}
-	q := `WITH mbdeprecated AS (SELECT * FROM massbank WHERE document->>'deprecated' is null),
-ikt AS (SELECT link->>'identifier' id FROM (SELECT jsonb_array_elements(document->'compound'->'link') link FROM mbdeprecated WHERE  jsonb_typeof(document->'compound'->'link') = 'array') ms WHERE link->>'database' = 'INCHIKEY')
-SELECT
-    (SELECT COUNT(id) FROM mbdeprecated) as spectraCount,
-    (SELECT COUNT (DISTINCT id) FROM ikt ) as compoundCount,
-    (SELECT COUNT (DISTINCT substring(id FROM 1 FOR 14)) FROM ikt ) as isomerCount`
-	if err := p.database.QueryRow(q).Scan(&result.SpectraCount, &result.CompoundCount, &result.IsomerCount); err != nil {
-		return nil, err
-	}
-	return &result, nil
+	user       string  // the database user
+	dbname     string  // the database name
+	password   string  // the password of the database user
+	host       string  // the database host
+	port       uint    // the port the database is listening on
+	connString string  // the database connection string
+	database   *sql.DB // the database object
 }
 
 // NewPostgresSQLDb creates a postgres database handle implementing [MB3Database] from the configuration.
@@ -77,8 +55,7 @@ func NewPostgresSQLDb(config DBConfig) (*PostgresSQLDB, error) {
 		database:   nil,
 	}
 	if len(config.DbConnStr) < 1 {
-		postgres.connString = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
-			config.DbHost, config.DbPort, config.DbUser, config.DbPwd, config.DbName)
+		postgres.connString = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", config.DbHost, config.DbPort, config.DbUser, config.DbPwd, config.DbName)
 	}
 	return &postgres, nil
 }
@@ -100,14 +77,10 @@ func (p *PostgresSQLDB) Connect() error {
 	return p.init()
 }
 
-func (p *PostgresSQLDB) Ping() error {
-	return p.database.Ping()
-}
-
 // Disconnect see [MB3Database.Disconnect]
 func (p *PostgresSQLDB) Disconnect() error {
 	if p.database == nil {
-		return errors.New("database not set")
+		return errors.New("database not connected")
 	}
 	if err := p.database.Close(); err != nil {
 		return err
@@ -116,14 +89,22 @@ func (p *PostgresSQLDB) Disconnect() error {
 	return nil
 }
 
+// Ping see [MB3Database.Ping]
+func (p *PostgresSQLDB) Ping() error {
+	return p.database.Ping()
+}
+
 // Count see [MB3Database.Count]
 func (p *PostgresSQLDB) Count() (int64, error) {
+	if err := p.checkDatabase(); err != nil {
+		return 0, err
+	}
 	var count int64
 	err := p.database.QueryRow("SELECT COUNT(*) FROM  massbank").Scan(&count)
+	// empty relation is not an error
 	if err != nil && err.(*pq.Error).Code == "42P01" {
 		return 0, nil
-	}
-	if err != nil {
+	} else if err != nil {
 		return 0, err
 	}
 	return count, err
@@ -131,119 +112,99 @@ func (p *PostgresSQLDB) Count() (int64, error) {
 
 // IsEmpty see [MB3Database.IsEmpty]
 func (p *PostgresSQLDB) IsEmpty() (bool, error) {
-	var err error
-	if err = p.checkDatabase(); err != nil {
-		return false, err
-	}
-	var count uint
-	res := p.database.QueryRow(`SELECT COUNT(*) FROM massbank;`)
-	err = res.Scan(&count)
-	if err != nil && err.(*pq.Error).Code == "42P01" {
-		return true, nil
-	}
+	c, err := p.Count()
 	if err != nil {
 		return false, err
 	}
-	return count == 0, nil
+	return c == 0, nil
 }
 
 // DropAllRecords see [MB3Database.DropAllRecords]
 func (p *PostgresSQLDB) DropAllRecords() error {
-	var err error
-	if err = p.checkDatabase(); err != nil {
+	var resultError error
+	if err := p.checkDatabase(); err != nil {
 		return err
 	}
 	q := "DROP TABLE massbank;"
-	_, err = p.database.Exec(q)
-	if err != nil {
-		return err
+
+	if _, err := p.database.Exec(q); err != nil {
+		resultError = errors.Join(resultError, errors.New("Could not drop massbank table: "+err.Error()))
 	}
 	q = "DROP TABLE metadata;"
-	_, err = p.database.Exec(q)
-	if err != nil {
-		return err
+
+	if _, err := p.database.Exec(q); err != nil {
+		resultError = errors.Join(resultError, errors.New("Could not drop metadata table: "+err.Error()))
 	}
-	return p.init()
+	if err := p.init(); err != nil {
+		resultError = errors.Join(resultError, errors.New("Could not initialize database after drop: "+err.Error()))
+	}
+	return resultError
+}
+
+// GetMetaData see [MB3Database.GetMetaData]
+func (p *PostgresSQLDB) GetMetaData() (*MB3MetaData, error) {
+	if err := p.checkDatabase(); err != nil {
+		return nil, err
+	}
+	var result MB3MetaData
+	if err := p.database.QueryRow(`SELECT version,timestamp at time zone 'UTC',commit FROM metadata LIMIT 1`).
+		Scan(&result.StoredMetadata.Version, &result.StoredMetadata.TimeStamp, &result.StoredMetadata.GitCommit); err != nil {
+		return nil, err
+	}
+	filteredQuery := p.getFilteredMbQueryFragment(&Filters{IncludeDeprecated: false})
+	q := filteredQuery.Comma(`ikt AS (SELECT link ->> 'identifier' id
+             FROM (SELECT jsonb_array_elements(document -> 'compound' -> 'link') link
+                   FROM filteredMB
+                   WHERE jsonb_typeof(document -> 'compound' -> 'link') = 'array') ms
+             WHERE link ->> 'database' = 'INCHIKEY')
+		SELECT (SELECT COUNT(id) FROM filteredMB)                         as spectraCount,
+       		(SELECT COUNT(DISTINCT id) FROM ikt)                          as compoundCount,
+       		(SELECT COUNT(DISTINCT substring(id FROM 1 FOR 14)) FROM ikt) as isomerCount`)
+	sqlStr, params, err := q.ToPgsql()
+	if err != nil {
+		return nil, err
+	}
+	if err = p.database.QueryRow(sqlStr, params...).
+		Scan(&result.SpectraCount, &result.CompoundCount, &result.IsomerCount); err != nil {
+		return nil, err
+	}
+	return &result, nil
 }
 
 // GetRecord see [MB3Database.GetRecord]
 func (p *PostgresSQLDB) GetRecord(s *string) (*massbank.MassBank2, error) {
+	if err := p.checkDatabase(); err != nil {
+		return nil, err
+	}
 	var result massbank.MassBank2
 	var b []byte
 	if err := p.database.QueryRow("SELECT document FROM massbank WHERE document->>'accession' = $1", *s).Scan(&b); err != nil {
 		return nil, err
 	}
-	var err = json.Unmarshal(b, &result)
+	err := json.Unmarshal(b, &result)
 	return &result, err
 }
 
 // GetRecords see [MB3Database.GetRecords]
 func (p *PostgresSQLDB) GetRecords(filters Filters) (*SearchResult, error) {
-	if filters.Limit <= 0 {
-		filters.Limit = DefaultValues.Limit
+	if err := p.checkDatabase(); err != nil {
+		return nil, err
 	}
-	if filters.MassEpsilon == nil {
-		filters.MassEpsilon = &DefaultValues.MassEpsilon
-	}
-	if filters.IntensityCutoff == nil {
-		filters.IntensityCutoff = &DefaultValues.IntensityCutoff
-	}
-
-	where := bqb.Optional("WHERE")
-	if !filters.IncludeDeprecated {
-		where.And("document->>'deprecated' is null")
-	}
-	if filters.InstrumentType != nil {
-		where.And("document->'acquisition'->>'instrument_type' IN (?)", *filters.InstrumentType)
-	}
-	if filters.MsType != nil {
-		var msTypes []string
-		for _, ms := range *filters.MsType {
-			msTypes = append(msTypes, ms.String())
-		}
-		where.And("EXISTS (SELECT * FROM jsonb_array_elements(document->'acquisition'->'mass_spectrometry') ms WHERE ms->>'subtag' = 'MS_TYPE' AND ms->>'value' IN (?))", msTypes)
-	}
-	if filters.IonMode != massbank.ANY {
-		where.And("EXISTS (SELECT * FROM jsonb_array_elements(document->'acquisition'->'mass_spectrometry') ms WHERE ms->>'subtag' = 'ION_MODE' AND ms->>'value' = ?)", string(filters.IonMode))
-	}
-	if filters.Mass != nil {
-		where.And("(document->'compound'->>'mass')::float BETWEEN ? AND ?", *filters.Mass-*filters.MassEpsilon, *filters.Mass+*filters.MassEpsilon)
-	}
-	if filters.Splash != "" {
-		where.And("document->'peak'->>'splash' = ?", filters.Splash)
-	}
-	if filters.CompoundName != "" {
-		where.And("EXISTS (SELECT * FROM jsonb_array_elements(document->'compound'->'name') name WHERE name::text ILIKE ?)", "%"+filters.CompoundName+"%")
-	}
-	if filters.Formula != "" {
-		where.And("document->'compound'->>'formula' ILIKE ?", "%"+filters.Formula+"%")
-	}
-	if filters.Contributor != nil {
-		where.And("document->>'contributor' IN (?)", *filters.Contributor)
-	}
-	if filters.InchiKey != "" {
-		where.And("jsonb_typeof(document->'compound'->'link') = 'array' AND EXISTS (SELECT * FROM jsonb_array_elements(document->'compound'->'link') link WHERE link->>'database' = 'INCHIKEY' AND link->>'identifier' = ?)", filters.InchiKey)
-	}
-	if filters.Peaks != nil {
-		for _, p := range *filters.Peaks {
-			where.And("EXISTS (SELECT * FROM jsonb_array_elements(document->'peak'->'peak'->'mz') mz WHERE mz BETWEEN ? AND ?)", p-*filters.MassEpsilon, p+*filters.MassEpsilon)
-		}
-	}
-	var peakdiffquery = bqb.New("")
-	if filters.PeakDifferences != nil {
-		innerwhere := bqb.New("WHERE t1.mz > t2.mz")
-		diff := bqb.Optional("")
-		for _, pd := range *filters.PeakDifferences {
-			diff.Or("(t1.mz-t2.mz BETWEEN ? AND ?)", pd-*filters.MassEpsilon, pd+*filters.MassEpsilon)
-		}
-		innerwhere.And("?", diff)
-		peakdiffquery = bqb.New("JOIN (WITH t AS (SELECT mz,id FROM (SELECT jsonb_array_elements(document->'peak'->'peak'->'mz')::float AS mz,jsonb_array_elements(document->'peak'->'peak'->'rel')::int AS rel,id FROM massbank) as relmz WHERE relmz.rel>=?) SELECT DISTINCT t1.id FROM t as t1 LEFT JOIN t as t2 ON t1.id=t2.id ?) AS diff ON massbank.id = diff.id", *filters.IntensityCutoff, innerwhere)
-
-	}
-	query := bqb.New("WITH mbdeprecated as (select count(*) OVER() spectraCount, json_build_object('id', document->>'accession','title', document->>'title')::json spectrum, document->'compound' compound FROM massbank ? ?) SELECT  count(*) OVER() resultCount, (array_agg(DISTINCT spectraCount))[1] spectraCount, compound->>'inchi' inchi, array_to_json(array_agg(spectrum ORDER BY spectrum->>'title')) spectra, array_to_json(array_agg(DISTINCT compound->>'formula')) formula, array_to_json(array_agg(DISTINCT compound->>'mass')) mass, array_to_json(array_agg(DISTINCT compound->'name')) names , array_to_json(array_agg(DISTINCT compound->>'smiles')) smiles FROM mbdeprecated GROUP BY inchi", peakdiffquery, where)
+	filtered := p.getFilteredMbQueryFragment(&filters)
+	query := filtered.Space(`
+SELECT count(*) OVER ()                                                 resultCount,
+       (array_agg(DISTINCT spectraCount))[1]                            spectraCount,
+        document -> 'compound' ->> 'inchi'                                             inchi,
+       array_to_json(array_agg(spectrum ORDER BY spectrum ->> 'title')) spectra,
+       array_to_json(array_agg(DISTINCT  document -> 'compound' ->> 'formula'))        formula,
+       array_to_json(array_agg(DISTINCT  document -> 'compound' ->> 'mass'))           mass,
+       array_to_json(array_agg(DISTINCT  document -> 'compound' -> 'name'))            names,
+       array_to_json(array_agg(DISTINCT  document -> 'compound' ->> 'smiles'))         smiles
+FROM filteredMB
+GROUP BY inchi`)
 	query.Space("ORDER BY (array_agg(spectrum))[1]->>'title' ASC LIMIT ? OFFSET ?", filters.Limit, filters.Offset)
-	sql, params, err := query.ToPgsql()
-	rows, err := p.database.Query(sql, params...)
+	sqlStr, params, err := query.ToPgsql()
+	rows, err := p.database.Query(sqlStr, params...)
 	if err != nil {
 		return nil, err
 	}
@@ -273,11 +234,11 @@ func (p *PostgresSQLDB) GetRecords(filters Filters) (*SearchResult, error) {
 			return nil, err
 		}
 		var massStr []string
-		json.Unmarshal(rawBytes.spectra, &row.spectra)
-		json.Unmarshal(rawBytes.formula, &row.formula)
-		json.Unmarshal(rawBytes.mass, &massStr)
-		json.Unmarshal(rawBytes.names, &row.names)
-		json.Unmarshal(rawBytes.smiles, &row.smiles)
+		common.CheckAndLogError(json.Unmarshal(rawBytes.spectra, &row.spectra), "Error while reading spectra data from result")
+		common.CheckAndLogError(json.Unmarshal(rawBytes.formula, &row.formula), "Error while reading formula data from result")
+		common.CheckAndLogError(json.Unmarshal(rawBytes.mass, &massStr), "Error while reading mass data from result")
+		common.CheckAndLogError(json.Unmarshal(rawBytes.names, &row.names), "Error while reading names data from result")
+		common.CheckAndLogError(json.Unmarshal(rawBytes.smiles, &row.smiles), "Error while reading smiles data from result")
 		for _, ms := range massStr {
 			m, err := strconv.ParseFloat(ms, 64)
 			if err != nil {
@@ -294,7 +255,7 @@ func (p *PostgresSQLDB) GetRecords(filters Filters) (*SearchResult, error) {
 				}
 			}
 		}
-		names := []string{}
+		var names = []string{}
 		for k := range namesMap {
 			names = append(names, k)
 		}
@@ -312,10 +273,31 @@ func (p *PostgresSQLDB) GetRecords(filters Filters) (*SearchResult, error) {
 	return &searchResult, nil
 }
 
+func (p *PostgresSQLDB) GetSpectra(filters Filters) (SpectraList, error) {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (p *PostgresSQLDB) GetSmiles(accession *string) (*string, error) {
+	var result string
+	var b []byte
+	if err := p.database.QueryRow(`SELECT document -> 'compound' ->> 'smiles'
+FROM massbank
+WHERE document ->> 'accession' = $1`, *accession).Scan(&b); err != nil {
+		return nil, err
+	}
+	result = string(b)
+	return &result, nil
+}
+
 // GetUniqueValues see [MB3Database.GetUniqueValues]
 func (p *PostgresSQLDB) GetUniqueValues(filters Filters) (MB3Values, error) {
-	var query = `
-WITH mbdeprecated as (SELECT * FROM massbank WHERE document->>'deprecated' is null)
+	var val MB3Values
+	if err := p.checkDatabase(); err != nil {
+		return val, err
+	}
+	filteredQuery := p.getFilteredMbQueryFragment(&filters)
+	var query = filteredQuery.Space(`
 SELECT to_json(co) as contributor,
        to_json(it) as instrument_type,
        to_json(mt) as ms_type,
@@ -330,58 +312,49 @@ FROM
     (SELECT ARRAY(SELECT t
                    FROM (SELECT document ->> 'contributor' as val,
                                 count(id)
-                         from mbdeprecated
+                         from filteredMB
                          GROUP BY document ->> 'contributor' ORDER BY document ->> 'contributor') t)) as co,
      (SELECT ARRAY(SELECT t
                    FROM (SELECT document -> 'acquisition' ->> 'instrument_type' as val,
                                 count(id)
-                         from mbdeprecated
-                         GROUP BY document -> 'acquisition' ->> 'instrument_type' ORDER BY document -> 'acquisition' ->> 'instrument_type' ) t)) as it,
+                         from filteredMB
+                         GROUP BY document -> 'acquisition' ->> 'instrument_type' 
+                         ORDER BY document -> 'acquisition' ->> 'instrument_type' ) t)) as it,
      (SELECT ARRAY(SELECT t
                    FROM (select t.ms ->> 'value' as val, count(t.ms)
                          FROM (Select jsonb_array_elements(document -> 'acquisition' -> 'mass_spectrometry') as ms
-                               from mbdeprecated) t
+                               from filteredMB) t
                          where ms ->> 'subtag' = 'MS_TYPE'
                          GROUP BY t.ms ORDER BY t.ms) t)) as mt,
      (SELECT ARRAY(SELECT t
                    FROM (select t.ms ->> 'value' as val, count(t.ms)
                          FROM (Select jsonb_array_elements(document -> 'acquisition' -> 'mass_spectrometry') as ms
-                               from mbdeprecated) t
+                               from filteredMB) t
                          where ms ->> 'subtag' = 'ION_MODE'
                          GROUP BY t.ms ORDER BY t.ms) t)) as im,
      (SELECT MIN((document -> 'compound' ->> 'mass' )::float8) as minm,
              MAX((document -> 'compound' ->> 'mass' )::float8) as maxm
-      from mbdeprecated) as mass,
+      from filteredMB) as mass,
      (SELECT MIN(t.mz) as minmz, MAX(t.mz) as maxmz
-      from (SELECT jsonb_array_elements(document -> 'peak' -> 'peak' -> 'mz')::float8 as mz FROM mbdeprecated) t) as mz,
+      from (SELECT jsonb_array_elements(document -> 'peak' -> 'peak' -> 'mz')::float8 as mz FROM filteredMB) t) as mz,
      (SELECT MIN(t.i) as mini, MAX(t.i) as maxi
       FROM (SELECT jsonb_array_elements(document -> 'peak' -> 'peak' -> 'intensity')::float8 as i
-            FROM mbdeprecated) t) as i`
-	var val MB3Values
-	row := p.database.QueryRow(query)
+            FROM filteredMB) t) as i`)
+	sqlStr, params, err := query.ToPgsql()
+	row := p.database.QueryRow(sqlStr, params...)
 	cojs := make([]uint8, 0)
 	itjs := make([]uint8, 0)
 	mtjs := make([]uint8, 0)
 	imjs := make([]uint8, 0)
-	err := row.Scan(
-		&cojs,
-		&itjs,
-		&mtjs,
-		&imjs,
-		&val.Mass.Max,
-		&val.Mass.Min,
-		&val.Peak.Max,
-		&val.Peak.Min,
-		&val.Intensity.Max,
-		&val.Intensity.Min)
+	err = row.Scan(&cojs, &itjs, &mtjs, &imjs, &val.Mass.Max, &val.Mass.Min, &val.Peak.Max, &val.Peak.Min, &val.Intensity.Max, &val.Intensity.Min)
 	var rit = struct{ Array []MBCountValues }{}
-	json.Unmarshal(cojs, &rit)
+	common.CheckAndLogError(json.Unmarshal(cojs, &rit), "Error while reading contributor data")
 	val.Contributor = append(val.Contributor, rit.Array...)
-	json.Unmarshal(itjs, &rit)
+	common.CheckAndLogError(json.Unmarshal(itjs, &rit), "Error while reading instrument type data")
 	val.InstrumentType = append(val.InstrumentType, rit.Array...)
-	json.Unmarshal(mtjs, &rit)
+	common.CheckAndLogError(json.Unmarshal(mtjs, &rit), "Error while reading MS type data")
 	val.MSType = append(val.MSType, rit.Array...)
-	json.Unmarshal(imjs, &rit)
+	common.CheckAndLogError(json.Unmarshal(imjs, &rit), "Error while reading ion mode data")
 	val.IonMode = append(val.IonMode, rit.Array...)
 	return val, err
 }
@@ -472,9 +445,6 @@ func (p *PostgresSQLDB) UpdateRecords(records []*massbank.MassBank2, metaDataId 
 	if err = p.checkDatabase(); err != nil {
 		return 0, 0, err
 	}
-	if err != nil {
-		return 0, 0, err
-	}
 	mid, err := strconv.ParseInt(metaDataId, 10, 64)
 	if err != nil {
 		return 0, 0, err
@@ -504,6 +474,9 @@ func (p *PostgresSQLDB) UpdateRecords(records []*massbank.MassBank2, metaDataId 
 			  AND  metadataid= $3 `
 	}
 	tx, err := p.database.Begin()
+	if err != nil {
+		return 0, 0, err
+	}
 	stmt, err := tx.Prepare(q)
 	if err != nil {
 		return 0, 0, err
@@ -581,12 +554,103 @@ func (p *PostgresSQLDB) checkDatabase() error {
 	return p.database.Ping()
 }
 
-func (p *PostgresSQLDB) GetSmiles(accession *string) (*string, error) {
-	var result string
-	var b []byte
-	if err := p.database.QueryRow("SELECT document->'compound'->>'smiles' FROM massbank WHERE document->>'accession' = $1", *accession).Scan(&b); err != nil {
-		return nil, err
+func (p *PostgresSQLDB) getFilteredMbQueryFragment(filters *Filters) *bqb.Query {
+	where := p.getFiltersQueryFragment(filters)
+	query := bqb.New(`WITH filteredMB as (select count(*) OVER ()   spectraCount,*,
+                             json_build_object('id', document ->> 'accession', 'title',
+                                               document ->> 'title')::json spectrum
+                      FROM massbank ? )`, where)
+	return query
+}
+
+func (p *PostgresSQLDB) getFiltersQueryFragment(filters *Filters) *bqb.Query {
+	if filters.Limit <= 0 {
+		filters.Limit = DefaultValues.Limit
 	}
-	result = string(b)
-	return &result, nil
+	if filters.MassEpsilon == nil {
+		filters.MassEpsilon = &DefaultValues.MassEpsilon
+	}
+	if filters.IntensityCutoff == nil {
+		filters.IntensityCutoff = &DefaultValues.IntensityCutoff
+	}
+
+	where := bqb.Optional("WHERE")
+	if !filters.IncludeDeprecated {
+		where.And("document->>'deprecated' is null")
+	}
+	if filters.InstrumentType != nil {
+		where.And("document->'acquisition'->>'instrument_type' IN (?)", *filters.InstrumentType)
+	}
+	if filters.MsType != nil {
+		var msTypes []string
+		for _, ms := range *filters.MsType {
+			msTypes = append(msTypes, ms.String())
+		}
+		where.And(`EXISTS
+(SELECT *
+ FROM jsonb_array_elements(document -> 'acquisition' -> 'mass_spectrometry') ms
+ WHERE ms ->> 'subtag' = 'MS_TYPE'
+   AND ms ->> 'value' IN (?))`, msTypes)
+	}
+	if filters.IonMode != massbank.ANY {
+		where.And(`EXISTS
+(SELECT *
+ FROM jsonb_array_elements(document -> 'acquisition' -> 'mass_spectrometry') ms
+ WHERE ms ->> 'subtag' = 'ION_MODE'
+   AND ms ->> 'value' = ?)`, string(filters.IonMode))
+	}
+	if filters.Mass != nil {
+		where.And("(document->'compound'->>'mass')::float BETWEEN ? AND ?", *filters.Mass-*filters.MassEpsilon, *filters.Mass+*filters.MassEpsilon)
+	}
+	if filters.Splash != "" {
+		where.And("document->'peak'->>'splash' = ?", filters.Splash)
+	}
+	if filters.CompoundName != "" {
+		where.And(`EXISTS
+(SELECT * FROM jsonb_array_elements(document -> 'compound' -> 'name') name WHERE name::text ILIKE ?)`, "%"+filters.CompoundName+"%")
+	}
+	if filters.Formula != "" {
+		where.And("document->'compound'->>'formula' ILIKE ?", "%"+filters.Formula+"%")
+	}
+	if filters.Contributor != nil {
+		where.And("document->>'contributor' IN (?)", *filters.Contributor)
+	}
+	if filters.InchiKey != "" {
+		where.And(`jsonb_typeof(document->'compound'->'link') = 'array' 
+  AND EXISTS (SELECT * FROM jsonb_array_elements(document->'compound'->'link') link 
+  WHERE link->>'database' = 'INCHIKEY' AND link->>'identifier' = ?)`, filters.InchiKey)
+	}
+	if filters.Peaks != nil {
+		for _, p := range *filters.Peaks {
+			where.And(`EXISTS
+(SELECT * FROM jsonb_array_elements(document -> 'peak' -> 'peak' -> 'mz') mz 
+          WHERE mz BETWEEN ? AND ?)`, p-*filters.MassEpsilon, p+*filters.MassEpsilon)
+		}
+	}
+	var result = &bqb.Query{}
+	if filters.PeakDifferences != nil {
+		var innerwhere = bqb.New("WHERE t1.mz > t2.mz")
+		var diff = bqb.Optional("")
+		for _, pd := range *filters.PeakDifferences {
+			diff.Or("(t1.mz-t2.mz BETWEEN ? AND ?)", pd-*filters.MassEpsilon, pd+*filters.MassEpsilon)
+		}
+		innerwhere.And("?", diff)
+		result = bqb.New(`JOIN
+(WITH t AS (SELECT mz, id
+            FROM (SELECT jsonb_array_elements(document -> 'peak' -> 'peak' -> 'mz')::float AS mz,
+                         jsonb_array_elements(document -> 'peak' -> 'peak' -> 'rel')::int  AS rel,
+                         id
+                  FROM massbank) as relmz
+            WHERE relmz.rel >= ?)
+ SELECT DISTINCT t1.id
+ FROM t as t1
+          LEFT JOIN t as t2 ON t1.id = t2.id ?)
+AS diff ON massbank.id = diff.id`, *filters.IntensityCutoff, innerwhere)
+
+	}
+	whereString, whereArgs, err := where.ToSql()
+	if err != nil {
+		log.Println("Error while getting sql for peak differences: ", err.Error())
+	}
+	return result.Space(whereString, whereArgs...)
 }

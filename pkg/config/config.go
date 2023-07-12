@@ -113,10 +113,8 @@ func getDBConfig() database.DBConfig {
 	flag.Parse()
 	if databaseType == "postgres" {
 		c.Database = database.Postgres
-	} else if databaseType == "mongodb" {
-		c.Database = database.MongoDB
 	} else {
-		panic("Database must be postgres or mongodb")
+		panic("Database must be postgres")
 	}
 	if c.DbPort == 0 {
 		if c.Database == database.Postgres {

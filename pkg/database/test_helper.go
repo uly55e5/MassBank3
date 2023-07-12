@@ -1,7 +1,6 @@
 package database
 
 import (
-	"github.com/Code-Hex/dd"
 	"github.com/MassBank/MassBank3/pkg/common"
 	"os"
 )
@@ -69,6 +68,5 @@ func InitPostgresTestDB(set DbInitSet) (MB3Database, error) {
 			}
 		}
 	}
-	println(dd.Dump(files))
 	return db, nil
 }
